@@ -190,4 +190,9 @@ export const typeDefs = gql`
   }
 
   scalar JSON
+}
+
+type Subscription {
+  _: Boolean
+}
 `

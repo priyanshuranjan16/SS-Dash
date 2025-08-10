@@ -98,7 +98,7 @@ export default async function dashboardRoutes(fastify, options) {
   
   // Get admin dashboard (extended data)
   fastify.get('/dashboard/admin', {
-    preHandler: fastify.requireRole(['admin']),
+    preHandler: [fastify.authenticate, fastify.requireRole(['admin'])],
     schema: {
       response: {
         200: {

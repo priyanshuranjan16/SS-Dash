@@ -1,7 +1,6 @@
 import Fastify from 'fastify'
-import cors from 'fastify-cors'
+import cors from '@fastify/cors'
 import jwt from 'fastify-jwt'
-import gql from 'fastify-gql'
 import dotenv from 'dotenv'
 
 import { connectDatabase } from './config/database.js'
@@ -9,8 +8,6 @@ import { authenticate, requireRole, requirePermission, optionalAuth } from './mi
 import authRoutes from './routes/auth.js'
 import profileRoutes from './routes/profile.js'
 import dashboardRoutes from './routes/dashboard.js'
-import { typeDefs } from './graphql/schema.js'
-import { resolvers } from './graphql/resolvers.js'
 
 dotenv.config()
 
@@ -35,16 +32,15 @@ await fastify.register(jwt, {
   secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key'
 })
 
-// Register GraphQL
-await fastify.register(gql, {
-  schema: typeDefs,
-  resolvers,
-  graphiql: NODE_ENV === 'development',
-  context: async (request) => {
-    // Add user to context for GraphQL resolvers
-    return { user: request.user }
-  }
-})
+// GraphQL temporarily disabled for debugging
+// await fastify.register(mercurius, {
+//   schema: typeDefs,
+//   resolvers,
+//   graphiql: NODE_ENV === 'development',
+//   context: async (request) => {
+//     return { user: request.user }
+//   }
+// })
 
 // Register authentication middleware
 fastify.decorate('authenticate', authenticate)
@@ -77,7 +73,6 @@ fastify.get('/', async (request, reply) => {
       auth: '/api/auth',
       profile: '/api/profile',
       dashboard: '/api/dashboard',
-      graphql: '/graphql',
       health: '/health'
     }
   }
@@ -169,8 +164,6 @@ const start = async () => {
     })
     
     fastify.log.info(`🚀 Server running on port ${PORT}`)
-    fastify.log.info(`📊 GraphQL endpoint: http://localhost:${PORT}/graphql`)
-    fastify.log.info(`🔍 GraphiQL playground: http://localhost:${PORT}/graphql`)
     fastify.log.info(`🏥 Health check: http://localhost:${PORT}/health`)
     
   } catch (error) {

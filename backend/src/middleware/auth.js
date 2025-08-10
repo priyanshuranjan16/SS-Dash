@@ -40,7 +40,7 @@ export async function authenticate(request, reply) {
   }
 }
 
-export async function requireRole(roles) {
+export function requireRole(roles) {
   return async function(request, reply) {
     await authenticate(request, reply)
     
@@ -59,7 +59,7 @@ export async function requireRole(roles) {
   }
 }
 
-export async function requirePermission(permission) {
+export function requirePermission(permission) {
   return async function(request, reply) {
     await authenticate(request, reply)
     
