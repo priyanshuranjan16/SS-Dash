@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+
+create-test-users.js
+env.example
+generate-hashes.js
+MONGODB_SETUP.md
+QUICK_START.md
+start-mongodb.bat  start-mongodb.sh
+test-login.js

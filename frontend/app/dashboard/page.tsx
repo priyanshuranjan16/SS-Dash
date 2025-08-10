@@ -32,7 +32,10 @@ const fallbackData: DashboardData = {
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#dc2626']
 
 export default function DashboardPage() {
-  const { user, logout, hasPermission, isRole } = useAuth()
+  const { user, logout, hasPermission, isRole, isLoading: authLoading } = useAuth()
+  
+  // Debug log to see user state
+  console.log('StudentDashboard - user:', user, 'authLoading:', authLoading)
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [dateRange, setDateRange] = useState('7d')
@@ -46,10 +49,10 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    if (mounted && !user) {
+    if (mounted && !authLoading && !user) {
       router.push('/login')
     }
-  }, [mounted, user, router])
+  }, [mounted, user, router, authLoading])
 
   // Fetch dashboard data
   useEffect(() => {
@@ -64,7 +67,7 @@ export default function DashboardPage() {
         setDashboardData(response.data)
         
         // Log dashboard view activity
-        await api.logActivity('viewed_dashboard', { role: user.role })
+        await api.logActivity('viewed_dashboard', { role: user?.role || 'student' })
         
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err)
@@ -80,14 +83,14 @@ export default function DashboardPage() {
     }
   }, [mounted, user])
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     router.push('/login')
   }
 
   // Transform API data for charts
   const chartData = useMemo(() => {
-    if (!dashboardData) return {
+    if (!dashboardData || !dashboardData.charts) return {
       courseProgress: [],
       weeklyStudyHours: [],
       gradeDistribution: [],
@@ -96,38 +99,38 @@ export default function DashboardPage() {
     }
 
     // Transform weekly activity to study hours format
-    const weeklyStudyHours = dashboardData.charts.weeklyActivity.map(item => ({
+    const weeklyStudyHours = dashboardData.charts?.weeklyActivity?.map(item => ({
       day: item.date,
       hours: item.students * 0.5, // Mock calculation
       subjects: Math.floor(item.students / 10) + 1
-    }))
+    })) || []
 
     // Transform role distribution to grade distribution format
-    const gradeDistribution = dashboardData.charts.roleDistribution.map((item, index) => ({
+    const gradeDistribution = dashboardData.charts?.roleDistribution?.map((item, index) => ({
       grade: ['A', 'B', 'C', 'D', 'F'][index] || 'F',
       count: item.count,
       color: COLORS[index] || COLORS[0]
-    }))
+    })) || []
 
     // Create skill assessment from monthly growth
-    const skillAssessment = dashboardData.charts.monthlyGrowth.map((item, index) => ({
+    const skillAssessment = dashboardData.charts?.monthlyGrowth?.map((item, index) => ({
       skill: ['Programming', 'Mathematics', 'Problem Solving', 'Communication', 'Teamwork', 'Research'][index] || 'Skill',
       value: Math.min(100, Math.max(50, item.growth))
-    }))
+    })) || []
 
     // Create attendance trend from weekly activity
-    const attendanceTrend = dashboardData.charts.weeklyActivity.map((item, index) => ({
+    const attendanceTrend = dashboardData.charts?.weeklyActivity?.map((item, index) => ({
       week: `Week ${index + 1}`,
       attendance: Math.min(100, Math.max(80, 85 + (item.students % 20)))
-    }))
+    })) || []
 
     // Create course progress from role distribution
-    const courseProgress = dashboardData.charts.roleDistribution.map((item, index) => ({
+    const courseProgress = dashboardData.charts?.roleDistribution?.map((item, index) => ({
       course: `Course ${index + 1}`,
       progress: Math.min(100, Math.max(60, 70 + (item.count % 30))),
       grade: ['A-', 'B+', 'A', 'B-', 'A-'][index] || 'B+',
       attendance: Math.min(100, Math.max(80, 85 + (item.count % 15)))
-    }))
+    })) || []
 
     return {
       courseProgress,
@@ -149,7 +152,7 @@ export default function DashboardPage() {
     },
     {
       title: 'Courses Enrolled',
-      value: dashboardData ? dashboardData.metrics.totalUsers.toString() : '--',
+      value: dashboardData?.metrics?.totalUsers?.toString() || '--',
       change: 'Current',
       trend: 'stable',
       icon: BookOpen,
@@ -173,14 +176,16 @@ export default function DashboardPage() {
     }
   ]
 
-  if (!mounted) {
+  if (!mounted || authLoading) {
     return (
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Student Dashboard</h1>
-              <p className="text-muted-foreground">Loading...</p>
+              <p className="text-muted-foreground">
+                {authLoading ? 'Loading authentication...' : 'Loading...'}
+              </p>
             </div>
           </div>
         </div>
@@ -215,7 +220,7 @@ export default function DashboardPage() {
                 Student
               </Badge>
             </div>
-            <p className="text-muted-foreground">Welcome back, {user.name || user.email}! Track your academic progress and performance.</p>
+            <p className="text-muted-foreground">Welcome back, {user?.name || user?.email || 'Student'}! Track your academic progress and performance.</p>
           </div>
           <motion.div 
             className="flex gap-2"
@@ -558,8 +563,8 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {dashboardData?.recentActivity.length ? (
-                        dashboardData.recentActivity.slice(0, 5).map((activity, index) => (
+                      {dashboardData?.recentActivity?.length ? (
+                        dashboardData.recentActivity?.slice(0, 5).map((activity, index) => (
                           <motion.div
                             key={index}
                             initial={{ x: -20, opacity: 0 }}

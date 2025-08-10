@@ -25,7 +25,7 @@ const formSchema = z.object({
   password: z.string().min(8, {
     message: "Password must be at least 8 characters",
   }),
-  role: z.enum(["student", "teacher", "admin"]).optional(),
+  role: z.enum(["student", "teacher", "admin"]),
 }).refine((data) => {
   // For signup, name is required
   if (typeof window !== 'undefined' && window.location.pathname === '/signup') {
@@ -40,9 +40,10 @@ const formSchema = z.object({
 interface AuthFormProps {
   type: "login" | "signup";
   onSubmit: (values: z.infer<typeof formSchema>) => Promise<void>;
+  isLoading?: boolean;
 }
 
-export function AuthForm({ type, onSubmit }: AuthFormProps) {
+export function AuthForm({ type, onSubmit, isLoading }: AuthFormProps) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -79,7 +80,13 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
   return (
     <Form {...form}>
       <motion.form 
-        onSubmit={form.handleSubmit(onSubmit)} 
+        onSubmit={(e) => {
+          console.log('Form submit event triggered') // Debug log
+          form.handleSubmit((values) => {
+            console.log('Form validation passed, calling onSubmit with:', values) // Debug log
+            return onSubmit(values)
+          })(e)
+        }} 
         className="space-y-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -166,38 +173,36 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
           />
         </AuthTransition>
 
-        {type === "signup" && (
-          <AuthTransition>
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        transition={{ duration: 0.1 }}
-                      >
-                        <SelectTrigger className="h-10">
-                          <SelectValue placeholder="Select your role" />
-                        </SelectTrigger>
-                      </motion.div>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="teacher">Teacher</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </AuthTransition>
-        )}
+        <AuthTransition>
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Role</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ duration: 0.1 }}
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="Select your role" />
+                      </SelectTrigger>
+                    </motion.div>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="teacher">Teacher</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </AuthTransition>
 
         <AuthTransition>
           <motion.div
@@ -208,9 +213,9 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
             <Button
               type="submit"
               className="w-full"
-              disabled={form.formState.isSubmitting}
+              disabled={form.formState.isSubmitting || isLoading}
             >
-              {form.formState.isSubmitting ? (
+              {(form.formState.isSubmitting || isLoading) ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Please wait...

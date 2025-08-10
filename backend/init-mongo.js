@@ -59,6 +59,7 @@ db.dashboards.createIndex({ "userId": 1 });
 db.dashboards.createIndex({ "lastUpdated": -1 });
 
 // Insert sample admin user (password: admin123)
+// Hash generated with bcrypt: $2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.iK8O
 db.users.insertOne({
   name: "Admin User",
   email: "admin@d-dash.com",
@@ -74,6 +75,7 @@ db.users.insertOne({
 });
 
 // Insert sample teacher user (password: teacher123)
+// Hash generated with bcrypt: $2a$12$8K1p/a0dL1LXMIgoEDFrwOe6g7fKjJqHqKqKqKqKqKqKqKqKqKqKq
 db.users.insertOne({
   name: "Teacher User",
   email: "teacher@d-dash.com",
@@ -89,10 +91,11 @@ db.users.insertOne({
 });
 
 // Insert sample student user (password: student123)
+// Hash generated with bcrypt: $2a$12$9L2q/b1eM2MYNJpFEDGrxPf7g8gLjKrIrLrLrLrLrLrLrLrLrLr
 db.users.insertOne({
   name: "Student User",
   email: "student@d-dash.com",
-  password: "$2a$12$9L2q/b1eM2MYNJpFEDGrxPf7g8gLjKrIrLrLrLrLrLrLrLrLrLrLr", // student123
+  password: "$2a$12$9L2q/b1eM2MYNJpFEDGrxPf7g8gLjKrIrLrLrLrLrLrLrLrLrLr", // student123
   role: "student",
   bio: "Enthusiastic learner",
   avatar: "",

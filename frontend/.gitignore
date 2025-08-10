@@ -39,3 +39,25 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+AUTH_TROUBLESHOOTING.md
+debug-auth.js
+debug-signin.html
+DUMMY_DATA_README.md
+ERROR_HANDLING.md
+SIGNIN_TROUBLESHOOTING.md
+test-auth.html
+test-auth.md
+test-backend-connection.html
+test-connection.html
+test-login.html
+test-signin.html
+TROUBLESHOOTING.md
+test-dummy-data.html
+LOGIN_TROUBLESHOOTING.md
+setup-login.bat
+start-backend-debugging.bat
+start-backend-simple.bat
+start-backend.bat
+start-backend.sh

@@ -12,6 +12,7 @@ import { useAuth } from '../../../contexts/auth-context'
 import { useRouter } from 'next/navigation'
 import { RoleNav } from '../../../components/ui/role-nav'
 import { api, AdminDashboardData } from '../../../lib/api'
+import { detailedChartData } from '../../../lib/dummy-data'
 
 // Fallback mock data for when API fails
 const fallbackData: AdminDashboardData = {
@@ -38,7 +39,10 @@ const fallbackData: AdminDashboardData = {
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#dc2626']
 
 export default function AdminDashboardPage() {
-  const { user, logout } = useAuth()
+  const { user, logout, isLoading: authLoading } = useAuth()
+  
+  // Debug log to see user state
+  console.log('AdminDashboard - user:', user, 'authLoading:', authLoading)
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [dateRange, setDateRange] = useState('7d')
@@ -52,10 +56,10 @@ export default function AdminDashboardPage() {
   }, [])
 
   useEffect(() => {
-    if (mounted && !user) {
+    if (mounted && !authLoading && !user) {
       router.push('/login')
     }
-  }, [mounted, user, router])
+  }, [mounted, user, router, authLoading])
 
   // Fetch dashboard data
   useEffect(() => {
@@ -70,7 +74,7 @@ export default function AdminDashboardPage() {
         setDashboardData(response.data)
         
         // Log dashboard view activity
-        await api.logActivity('viewed_admin_dashboard', { role: user.role })
+        await api.logActivity('viewed_admin_dashboard', { role: user?.role || 'admin' })
         
       } catch (err) {
         console.error('Failed to fetch admin dashboard data:', err)
@@ -86,72 +90,92 @@ export default function AdminDashboardPage() {
     }
   }, [mounted, user])
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     router.push('/login')
   }
 
   // Transform API data for charts
   const chartData = useMemo(() => {
-    if (!dashboardData) return {
-      userGrowth: [],
-      revenueTrend: [],
-      roleDistribution: [],
-      systemMetrics: [],
-      weeklyActivity: []
+    if (!dashboardData || !dashboardData.charts) return {
+      userGrowth: detailedChartData.userGrowth,
+      revenueTrend: detailedChartData.revenueTrend,
+      roleDistribution: detailedChartData.gradeDistribution.map((item, index) => ({
+        role: item.grade,
+        count: item.count,
+        percentage: (item.count / detailedChartData.gradeDistribution.reduce((sum, i) => sum + i.count, 0)) * 100,
+        color: item.color
+      })),
+      systemMetrics: detailedChartData.systemMetrics,
+      weeklyActivity: detailedChartData.weeklyTeachingHours.map(item => ({
+        day: item.day,
+        users: item.hours * 10,
+        signups: item.classes * 5,
+        activity: item.hours + item.classes + item.officeHours
+      }))
     }
 
-    // Transform monthly growth to user growth format
-    const userGrowth = dashboardData.charts.monthlyGrowth.map(item => ({
-      month: item.month,
-      users: item.growth * 10, // Mock calculation
-      growth: item.growth
-    }))
+    // Use detailed chart data as fallback and enhance with API data
+    const userGrowth = dashboardData.charts?.monthlyGrowth?.length ? 
+      dashboardData.charts.monthlyGrowth.map(item => ({
+        month: item.month,
+        users: item.growth * 10,
+        growth: item.growth
+      })) : detailedChartData.userGrowth
 
-    // Transform monthly growth to revenue trend
-    const revenueTrend = dashboardData.charts.monthlyGrowth.map(item => ({
-      month: item.month,
-      revenue: item.revenue,
-      growth: item.growth
-    }))
+    const revenueTrend = dashboardData.charts?.monthlyGrowth?.length ?
+      dashboardData.charts.monthlyGrowth.map(item => ({
+        month: item.month,
+        revenue: item.revenue,
+        growth: item.growth
+      })) : detailedChartData.revenueTrend
 
-    // Transform role distribution
-    const roleDistribution = dashboardData.charts.roleDistribution.map((item, index) => ({
-      role: item.role,
-      count: item.count,
-      percentage: item.percentage,
-      color: COLORS[index] || COLORS[0]
-    }))
+    const roleDistribution = dashboardData.charts?.roleDistribution?.length ?
+      dashboardData.charts.roleDistribution.map((item, index) => ({
+        role: item.role,
+        count: item.count,
+        percentage: item.percentage,
+        color: COLORS[index] || COLORS[0]
+      })) : detailedChartData.gradeDistribution.map((item, index) => ({
+        role: item.grade,
+        count: item.count,
+        percentage: (item.count / detailedChartData.gradeDistribution.reduce((sum, i) => sum + i.count, 0)) * 100,
+        color: item.color
+      }))
 
-    // Create system metrics from system health
     const systemMetrics = [
       {
         metric: 'Uptime',
-        value: Math.round(dashboardData.systemHealth.uptime / 3600), // Convert to hours
+        value: Math.round((dashboardData.systemHealth?.uptime || detailedChartData.systemMetrics[0].value) / 3600),
         unit: 'hours',
         status: 'healthy'
       },
       {
         metric: 'Active Connections',
-        value: dashboardData.systemHealth.activeConnections,
+        value: dashboardData.systemHealth?.activeConnections || detailedChartData.systemMetrics[1].value,
         unit: 'connections',
         status: 'healthy'
       },
       {
         metric: 'Database Status',
-        value: dashboardData.systemHealth.databaseStatus === 'healthy' ? 100 : 0,
+        value: dashboardData.systemHealth?.databaseStatus === 'healthy' ? 100 : 0,
         unit: '%',
-        status: dashboardData.systemHealth.databaseStatus
+        status: dashboardData.systemHealth?.databaseStatus || 'healthy'
       }
     ]
 
-    // Transform weekly activity
-    const weeklyActivity = dashboardData.charts.weeklyActivity.map(item => ({
-      day: item.date,
-      users: item.students + item.teachers,
-      signups: item.signups,
-      activity: item.students + item.teachers + item.signups
-    }))
+    const weeklyActivity = dashboardData.charts?.weeklyActivity?.length ?
+      dashboardData.charts.weeklyActivity.map(item => ({
+        day: item.date,
+        users: item.students + item.teachers,
+        signups: item.signups,
+        activity: item.students + item.teachers + item.signups
+      })) : detailedChartData.weeklyTeachingHours.map(item => ({
+        day: item.day,
+        users: item.hours * 10,
+        signups: item.classes * 5,
+        activity: item.hours + item.classes + item.officeHours
+      }))
 
     return {
       userGrowth,
@@ -165,7 +189,7 @@ export default function AdminDashboardPage() {
   const summaryMetrics = [
     {
       title: 'Total Users',
-      value: dashboardData?.metrics.totalUsers.toString() || '--',
+      value: dashboardData?.metrics?.totalUsers?.toString() || '--',
       change: '+12%',
       trend: 'up',
       icon: Users,
@@ -173,7 +197,7 @@ export default function AdminDashboardPage() {
     },
     {
       title: 'Active Users',
-      value: dashboardData?.metrics.activeUsers.toString() || '--',
+      value: dashboardData?.metrics?.activeUsers?.toString() || '--',
       change: '+8%',
       trend: 'up',
       icon: UserCheck,
@@ -181,7 +205,7 @@ export default function AdminDashboardPage() {
     },
     {
       title: 'Weekly Signups',
-      value: dashboardData?.metrics.weeklySignups.toString() || '--',
+      value: dashboardData?.metrics?.weeklySignups?.toString() || '--',
       change: '+15%',
       trend: 'up',
       icon: TrendingUp,
@@ -189,7 +213,7 @@ export default function AdminDashboardPage() {
     },
     {
       title: 'Revenue',
-      value: dashboardData?.metrics.revenue ? `$${dashboardData.metrics.revenue.toLocaleString()}` : '--',
+      value: dashboardData?.metrics?.revenue ? `$${dashboardData.metrics?.revenue.toLocaleString()}` : '--',
       change: '+5%',
       trend: 'up',
       icon: Award,
@@ -200,35 +224,37 @@ export default function AdminDashboardPage() {
   const systemHealthMetrics = [
     {
       title: 'System Uptime',
-      value: dashboardData?.systemHealth.uptime ? `${Math.round(dashboardData.systemHealth.uptime / 3600)}h` : '--',
+      value: dashboardData?.systemHealth?.uptime ? `${Math.round(dashboardData.systemHealth?.uptime / 3600)}h` : '--',
       status: 'healthy',
       icon: Server,
       color: 'bg-green-500'
     },
     {
       title: 'Active Connections',
-      value: dashboardData?.systemHealth.activeConnections.toString() || '--',
+      value: dashboardData?.systemHealth?.activeConnections?.toString() || '--',
       status: 'healthy',
       icon: Activity,
       color: 'bg-blue-500'
     },
     {
       title: 'Database Status',
-      value: dashboardData?.systemHealth.databaseStatus || '--',
-      status: dashboardData?.systemHealth.databaseStatus === 'healthy' ? 'healthy' : 'warning',
+      value: dashboardData?.systemHealth?.databaseStatus || '--',
+      status: dashboardData?.systemHealth?.databaseStatus === 'healthy' ? 'healthy' : 'warning',
       icon: Database,
-      color: dashboardData?.systemHealth.databaseStatus === 'healthy' ? 'bg-green-500' : 'bg-yellow-500'
+      color: dashboardData?.systemHealth?.databaseStatus === 'healthy' ? 'bg-green-500' : 'bg-yellow-500'
     }
   ]
 
-  if (!mounted) {
+  if (!mounted || authLoading) {
     return (
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-              <p className="text-muted-foreground">Loading...</p>
+              <p className="text-muted-foreground">
+                {authLoading ? 'Loading authentication...' : 'Loading...'}
+              </p>
             </div>
           </div>
         </div>
@@ -263,7 +289,7 @@ export default function AdminDashboardPage() {
                 Administrator
               </Badge>
             </div>
-            <p className="text-muted-foreground">Welcome back, {user.name || user.email}! Monitor system performance and user activity.</p>
+            <p className="text-muted-foreground">Welcome back, {user?.name || user?.email || 'Admin'}! Monitor system performance and user activity.</p>
           </div>
           <motion.div 
             className="flex gap-2"
@@ -608,8 +634,8 @@ export default function AdminDashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {dashboardData?.recentActivity.length ? (
-                        dashboardData.recentActivity.slice(0, 5).map((activity, index) => (
+                      {dashboardData?.recentActivity?.length ? (
+                        dashboardData.recentActivity?.slice(0, 5).map((activity, index) => (
                           <motion.div
                             key={index}
                             initial={{ x: -20, opacity: 0 }}

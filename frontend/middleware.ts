@@ -46,15 +46,22 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // For demo purposes, we'll simulate role detection from token
-  // In a real app, you would decode and validate the JWT token
+  // Decode JWT token to get user role
   let userRole = 'student' // default role
   
-  // Simulate role detection (in real app, decode JWT)
-  if (authToken.includes('admin')) {
-    userRole = 'admin'
-  } else if (authToken.includes('teacher')) {
-    userRole = 'teacher'
+  try {
+    // Decode JWT token (without verification for client-side)
+    const tokenParts = authToken.split('.')
+    if (tokenParts.length === 3) {
+      const payload = JSON.parse(atob(tokenParts[1]))
+      userRole = payload.role || 'student'
+    }
+  } catch (error) {
+    console.error('Error decoding JWT token:', error)
+    // If token is invalid, redirect to login
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   // Check if user has required role for the route

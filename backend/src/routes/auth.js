@@ -43,6 +43,11 @@ const loginSchema = {
     password: { 
       type: 'string',
       description: 'User password'
+    },
+    role: { 
+      type: 'string', 
+      enum: ['student', 'teacher', 'admin'],
+      description: 'User role (optional)'
     }
   }
 }
@@ -171,7 +176,9 @@ export default async function authRoutes(fastify, options) {
     }
   }, async (request, reply) => {
     try {
-      const { email, password } = request.body
+      const { email, password, role } = request.body
+      
+      fastify.log.info('Login attempt:', { email, role })
       
       // Find user by email (include password for comparison)
       const user = await User.findByEmail(email).select('+password')

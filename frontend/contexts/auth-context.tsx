@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { api } from '@/lib/api'
 
 export type UserRole = 'student' | 'teacher' | 'admin'
 
@@ -14,7 +15,8 @@ interface User {
 interface AuthContextType {
   user: User | null
   login: (email: string, password: string, role?: UserRole) => Promise<User>
-  logout: () => void
+  setUser: (user: User) => void
+  logout: () => Promise<void>
   isLoading: boolean
   hasPermission: (permission: string) => boolean
   isRole: (role: UserRole) => boolean
@@ -61,31 +63,92 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check for existing session/token
     const checkAuth = async () => {
       try {
-        // Get token from cookie
-        const token = document.cookie
-          .split('; ')
-          .find(row => row.startsWith('auth-token='))
-          ?.split('=')[1]
-
+        const token = api.getToken()
+        console.log('Checking auth with token:', token ? 'exists' : 'none') // Debug log
+        
         if (token) {
-          // Simulate role detection from token
-          let role: UserRole = 'student'
-          if (token.includes('admin')) {
-            role = 'admin'
-          } else if (token.includes('teacher')) {
-            role = 'teacher'
+          try {
+            // Try to get user profile from API
+            const response = await api.getProfile()
+            console.log('Profile response:', response) // Debug log
+            
+            if (response.success) {
+              const user: User = {
+                id: response.user.id || response.user._id || '1', // Handle both id and _id
+                email: response.user.email,
+                role: response.user.role as UserRole,
+                name: response.user.name
+              }
+              console.log('Set user from profile:', user) // Debug log
+              setUser(user)
+            }
+          } catch (profileError) {
+            console.error('Profile fetch failed:', profileError)
+            
+            // Check if it's a network error (backend not running)
+            if (profileError instanceof TypeError && profileError.message.includes('Failed to fetch')) {
+              console.warn('Backend server appears to be offline. Attempting to decode token locally.')
+              
+              // Try to decode JWT token locally as fallback
+              try {
+                const tokenParts = token.split('.')
+                if (tokenParts.length === 3) {
+                  const payload = JSON.parse(atob(tokenParts[1]))
+                  const currentTime = Date.now() / 1000
+                  
+                  // Check if token is not expired
+                  if (payload.exp && payload.exp > currentTime) {
+                    const user: User = {
+                      id: payload.id || '1',
+                      email: payload.email,
+                      role: payload.role as UserRole,
+                      name: payload.name
+                    }
+                    console.log('Set user from token fallback:', user) // Debug log
+                    setUser(user)
+                    return // Don't clear token if we successfully decoded it
+                  } else {
+                    console.warn('Token is expired, clearing it')
+                    api.removeToken()
+                  }
+                }
+              } catch (decodeError) {
+                console.error('Failed to decode token locally:', decodeError)
+                // Try to create a fallback user from localStorage if available
+                const storedUser = localStorage.getItem('user')
+                if (storedUser) {
+                  try {
+                    const parsedUser = JSON.parse(storedUser)
+                    const user: User = {
+                      id: parsedUser.id || '1',
+                      email: parsedUser.email,
+                      role: parsedUser.role as UserRole,
+                      name: parsedUser.name
+                    }
+                    console.log('Set user from localStorage fallback:', user) // Debug log
+                    setUser(user)
+                    return
+                  } catch (localStorageError) {
+                    console.error('Failed to parse localStorage user:', localStorageError)
+                  }
+                }
+                // Don't clear token on decode error, just log it
+                console.warn('Keeping token despite decode error for offline mode')
+              }
+              
+              // Don't clear token for network errors - allow offline mode
+              console.warn('Backend unavailable, but keeping token for offline mode')
+            } else {
+              // For other errors, clear the token
+              console.error('Clearing invalid token due to profile fetch error')
+              api.removeToken()
+            }
           }
-
-          const mockUser: User = {
-            id: '1',
-            email: 'demo@example.com',
-            role,
-            name: 'Demo User'
-          }
-          setUser(mockUser)
         }
       } catch (error) {
         console.error('Auth check failed:', error)
+        // Clear invalid token
+        api.removeToken()
       } finally {
         setIsLoading(false)
       }
@@ -97,43 +160,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string, role?: UserRole): Promise<User> => {
     setIsLoading(true)
     try {
-      // Here you would make an API call to authenticate
-      // For demo purposes, we'll use the provided role or fallback to email-based detection
-      let userRole: UserRole = role || 'student'
+      // Call the real API
+      const response = await api.login({ email, password })
       
-      // If no role provided, fallback to email-based detection
-      if (!role) {
-        if (email.includes('admin')) {
-          userRole = 'admin'
-        } else if (email.includes('teacher')) {
-          userRole = 'teacher'
+      console.log('Login response:', response) // Debug log
+      
+      if (response.success) {
+        // Store token
+        api.setToken(response.token)
+        
+        // Convert API user to our User interface
+        const user: User = {
+          id: response.user.id || response.user._id, // Handle both id and _id
+          email: response.user.email,
+          role: response.user.role as UserRole,
+          name: response.user.name
         }
+        
+        console.log('Converted user:', user) // Debug log
+        setUser(user)
+        return user
+      } else {
+        throw new Error(response.message || 'Login failed')
       }
-
-      const mockUser: User = {
-        id: Date.now().toString(),
-        email,
-        role: userRole,
-        name: email.split('@')[0]
-      }
-
-      // Store token in cookie (for middleware compatibility)
-      const token = `mock-token-${userRole}`
-      document.cookie = `auth-token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict`
-      setUser(mockUser)
-      
-      return mockUser
     } catch (error) {
+      console.error('Login error:', error)
       throw new Error('Login failed')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const logout = () => {
-    // Remove cookie
-    document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-    setUser(null)
+  const setUserDirectly = (user: User) => {
+    setUser(user)
+  }
+
+  const logout = async () => {
+    console.log('Logout called - clearing all auth data...')
+    try {
+      await api.logout()
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      // Clear all auth data
+      api.removeToken()
+      setUser(null)
+      
+      // Clear localStorage completely
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      
+      // Clear any other potential auth data
+      sessionStorage.clear()
+      
+      console.log('✅ All auth data cleared')
+    }
   }
 
   const hasPermission = (permission: string): boolean => {
@@ -148,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextType = {
     user,
     login,
+    setUser: setUserDirectly,
     logout,
     isLoading,
     hasPermission,

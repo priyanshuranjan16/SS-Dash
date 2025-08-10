@@ -77,10 +77,10 @@ npm install
 
 
 # Start the development server
-node src/server.js
+npm start
 ```
 
-The backend will be running on `http://localhost:3001`
+The backend will be running on `http://localhost:4000`
 
 ### 3. Frontend Setup
 
@@ -100,8 +100,8 @@ The frontend will be running on `http://localhost:3000`
 ### 4. Access the Application
 
 - **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001
-- **GraphQL Playground**: http://localhost:3001/graphql
+- **Backend API**: http://localhost:4000
+- **GraphQL Playground**: http://localhost:4000/graphql
 
 
 
@@ -152,3 +152,4 @@ The frontend uses Next.js configuration with:
 
 
 **Built with ❤️ using Next.js, Fastify, and MongoDB**
+

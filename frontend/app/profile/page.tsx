@@ -41,7 +41,7 @@ import { useRouter } from 'next/navigation'
 import { api, ProfileData } from '../../lib/api'
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth()
+  const { user, logout, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -87,19 +87,22 @@ export default function ProfilePage() {
   }, [])
 
   useEffect(() => {
-    if (mounted && !user) {
+    if (mounted && !user && !authLoading) {
+      console.log('Profile page - redirecting to login because user is null and not loading') // Debug log
       router.push('/login')
     }
-  }, [mounted, user, router])
+  }, [mounted, user, router, authLoading])
 
   // Fetch profile data from backend
   useEffect(() => {
     const fetchProfile = async () => {
       if (user && mounted) {
+        console.log('Profile page - fetching profile for user:', user) // Debug log
         try {
           setIsLoading(true)
           setError(null)
           const response = await api.getProfile()
+          console.log('Profile page - API response:', response) // Debug log
           // Ensure avatar is never empty
           const userData = {
             ...response.user,
@@ -425,13 +428,15 @@ export default function ProfilePage() {
     }
   }
 
-  if (!mounted) {
+  if (!mounted || authLoading) {
     return (
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="text-center">
             <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-muted-foreground">
+              {authLoading ? 'Checking authentication...' : 'Loading...'}
+            </p>
           </div>
         </div>
       </div>
@@ -439,7 +444,36 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    return null
+    return (
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold tracking-tight">Authentication Required</h1>
+            <p className="text-muted-foreground mb-4">
+              You need to be logged in to view your profile.
+            </p>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                If you're seeing this message, it might be because:
+              </p>
+              <ul className="text-sm text-muted-foreground space-y-2">
+                <li>• Your backend server is not running</li>
+                <li>• Your authentication token has expired</li>
+                <li>• You need to log in again</li>
+              </ul>
+              <div className="mt-6 space-x-4">
+                <Button onClick={() => router.push('/login')}>
+                  Go to Login
+                </Button>
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                  Refresh Page
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

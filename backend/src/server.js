@@ -99,21 +99,21 @@ const start = async () => {
         })
       }
       
-      // Default error response
+      // Handle MongoDB errors
+      if (error.code === 11000) {
+        return reply.code(400).send({
+          error: 'Duplicate Error',
+          message: 'A record with this information already exists'
+        })
+      }
+      
+      // Handle other errors
       const statusCode = error.statusCode || 500
       const message = error.message || 'Internal Server Error'
       
-      reply.code(statusCode).send({
+      return reply.code(statusCode).send({
         error: 'Server Error',
         message: NODE_ENV === 'development' ? message : 'Something went wrong'
-      })
-    })
-
-    // Not found handler
-    fastify.setNotFoundHandler((request, reply) => {
-      reply.code(404).send({
-        error: 'Not Found',
-        message: `Route ${request.method}:${request.url} not found`
       })
     })
 
@@ -123,7 +123,7 @@ const start = async () => {
       
       try {
         await fastify.close()
-        fastify.log.info('Fastify server closed')
+        fastify.log.info('Server closed successfully')
         process.exit(0)
       } catch (error) {
         fastify.log.error('Error during shutdown:', error)
@@ -131,25 +131,42 @@ const start = async () => {
       }
     }
 
+    // Handle shutdown signals
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
     process.on('SIGINT', () => gracefulShutdown('SIGINT'))
 
     // Connect to database
     await connectDatabase()
-    
+    fastify.log.info('Connected to MongoDB')
+
     // Start server
     await fastify.listen({ 
       port: PORT, 
       host: '0.0.0.0' 
     })
     
-    fastify.log.info(`🚀 Server running on port ${PORT}`)
-    fastify.log.info(`🏥 Health check: http://localhost:${PORT}/health`)
-    
+    fastify.log.info(`🚀 Server is running on port ${PORT}`)
+    fastify.log.info(`📊 Environment: ${NODE_ENV}`)
+    fastify.log.info(`🔗 Health check: http://localhost:${PORT}/health`)
+    fastify.log.info(`📚 API docs: http://localhost:${PORT}/`)
+
   } catch (error) {
-    console.error('Error starting server:', error)
+    console.error('Failed to start server:', error)
     process.exit(1)
   }
 }
 
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error)
+  process.exit(1)
+})
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason)
+  process.exit(1)
+})
+
+// Start the server
 start()

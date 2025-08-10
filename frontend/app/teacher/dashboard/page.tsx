@@ -12,6 +12,7 @@ import { useAuth } from '../../../contexts/auth-context'
 import { useRouter } from 'next/navigation'
 import { RoleNav } from '../../../components/ui/role-nav'
 import { api, TeacherDashboardData } from '../../../lib/api'
+import { detailedChartData } from '../../../lib/dummy-data'
 
 // Fallback mock data for when API fails
 const fallbackData: TeacherDashboardData = {
@@ -38,7 +39,10 @@ const fallbackData: TeacherDashboardData = {
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#dc2626']
 
 export default function TeacherDashboardPage() {
-  const { user, logout } = useAuth()
+  const { user, logout, isLoading: authLoading } = useAuth()
+  
+  // Debug log to see user state
+  console.log('TeacherDashboard - user:', user, 'authLoading:', authLoading)
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [dateRange, setDateRange] = useState('7d')
@@ -52,10 +56,10 @@ export default function TeacherDashboardPage() {
   }, [])
 
   useEffect(() => {
-    if (mounted && !user) {
+    if (mounted && !authLoading && !user) {
       router.push('/login')
     }
-  }, [mounted, user, router])
+  }, [mounted, user, router, authLoading])
 
   // Fetch dashboard data
   useEffect(() => {
@@ -70,7 +74,7 @@ export default function TeacherDashboardPage() {
         setDashboardData(response.data)
         
         // Log dashboard view activity
-        await api.logActivity('viewed_teacher_dashboard', { role: user.role })
+        await api.logActivity('viewed_teacher_dashboard', { role: user?.role || 'teacher' })
         
       } catch (err) {
         console.error('Failed to fetch teacher dashboard data:', err)
@@ -86,69 +90,70 @@ export default function TeacherDashboardPage() {
     }
   }, [mounted, user])
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     router.push('/login')
   }
 
   // Transform API data for charts
   const chartData = useMemo(() => {
-    if (!dashboardData) return {
-      studentPerformance: [],
-      courseAnalytics: [],
-      weeklyTeachingHours: [],
-      studentEngagement: [],
-      gradeDistribution: [],
-      teachingEfficiency: []
+    if (!dashboardData || !dashboardData.charts) return {
+      studentPerformance: detailedChartData.studentPerformance,
+      courseAnalytics: detailedChartData.courseAnalytics,
+      weeklyTeachingHours: detailedChartData.weeklyTeachingHours,
+      studentEngagement: detailedChartData.studentEngagement,
+      gradeDistribution: detailedChartData.gradeDistribution,
+      teachingEfficiency: detailedChartData.teachingEfficiency
     }
 
-    // Transform weekly activity to teaching hours format
-    const weeklyTeachingHours = dashboardData.charts.weeklyActivity.map(item => ({
-      day: item.date,
-      hours: item.teachers * 2, // Mock calculation
-      classes: Math.floor(item.teachers / 2),
-      officeHours: Math.floor(item.teachers / 4)
-    }))
+    // Use detailed chart data as fallback and enhance with API data
+    const weeklyTeachingHours = dashboardData.charts?.weeklyActivity?.length ?
+      dashboardData.charts.weeklyActivity.map(item => ({
+        day: item.date,
+        hours: item.teachers * 2,
+        classes: Math.floor(item.teachers / 2),
+        officeHours: Math.floor(item.teachers / 4)
+      })) : detailedChartData.weeklyTeachingHours
 
-    // Transform role distribution to grade distribution format
-    const gradeDistribution = dashboardData.charts.roleDistribution.map((item, index) => ({
-      grade: ['A', 'B', 'C', 'D', 'F'][index] || 'F',
-      count: item.count,
-      color: COLORS[index] || COLORS[0]
-    }))
+    const gradeDistribution = dashboardData.charts?.roleDistribution?.length ?
+      dashboardData.charts.roleDistribution.map((item, index) => ({
+        grade: ['A', 'B', 'C', 'D', 'F'][index] || 'F',
+        count: item.count,
+        color: COLORS[index] || COLORS[0]
+      })) : detailedChartData.gradeDistribution
 
-    // Create student performance from weekly activity
-    const studentPerformance = dashboardData.charts.weeklyActivity.map((item, index) => ({
-      student: `Student ${index + 1}`,
-      course: `Course ${index + 1}`,
-      grade: Math.min(100, Math.max(60, 70 + (item.students % 30))),
-      attendance: Math.min(100, Math.max(80, 85 + (item.students % 15))),
-      participation: Math.min(100, Math.max(70, 75 + (item.students % 20)))
-    }))
+    const studentPerformance = dashboardData.charts?.weeklyActivity?.length ?
+      dashboardData.charts.weeklyActivity.map((item, index) => ({
+        student: `Student ${index + 1}`,
+        course: `Course ${index + 1}`,
+        grade: Math.min(100, Math.max(60, 70 + (item.students % 30))),
+        attendance: Math.min(100, Math.max(80, 85 + (item.students % 15))),
+        participation: Math.min(100, Math.max(70, 75 + (item.students % 20)))
+      })) : detailedChartData.studentPerformance
 
-    // Create course analytics from monthly growth
-    const courseAnalytics = dashboardData.charts.monthlyGrowth.map((item, index) => ({
-      course: `Course ${index + 1}`,
-      students: Math.floor(item.growth * 2),
-      avgGrade: (Math.random() * 20 + 80).toFixed(1),
-      completion: Math.min(100, Math.max(80, 85 + (item.growth % 15))),
-      satisfaction: (Math.random() * 1 + 4).toFixed(1)
-    }))
+    const courseAnalytics = dashboardData.charts?.monthlyGrowth?.length ?
+      dashboardData.charts.monthlyGrowth.map((item, index) => ({
+        course: `Course ${index + 1}`,
+        students: Math.floor(item.growth * 2),
+        avgGrade: (Math.random() * 20 + 80).toFixed(1),
+        completion: Math.min(100, Math.max(80, 85 + (item.growth % 15))),
+        satisfaction: (Math.random() * 1 + 4).toFixed(1)
+      })) : detailedChartData.courseAnalytics
 
-    // Create student engagement from role distribution
-    const studentEngagement = dashboardData.charts.roleDistribution.map((item, index) => ({
-      metric: ['Class Participation', 'Assignment Completion', 'Office Hours Attendance', 'Discussion Forum Activity', 'Peer Collaboration'][index] || 'Metric',
-      value: Math.min(100, Math.max(70, 75 + (item.count % 25))),
-      target: Math.min(100, Math.max(80, 85 + (item.count % 15)))
-    }))
+    const studentEngagement = dashboardData.charts?.roleDistribution?.length ?
+      dashboardData.charts.roleDistribution.map((item, index) => ({
+        metric: ['Class Participation', 'Assignment Completion', 'Office Hours Attendance', 'Discussion Forum Activity', 'Peer Collaboration'][index] || 'Metric',
+        value: Math.min(100, Math.max(70, 75 + (item.count % 25))),
+        target: Math.min(100, Math.max(80, 85 + (item.count % 15)))
+      })) : detailedChartData.studentEngagement
 
-    // Create teaching efficiency from monthly growth
-    const teachingEfficiency = dashboardData.charts.monthlyGrowth.map((item, index) => ({
-      month: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'][index] || 'Month',
-      efficiency: Math.min(100, Math.max(80, 85 + (item.growth % 15))),
-      studentSatisfaction: (Math.random() * 1 + 4).toFixed(1),
-      workload: Math.min(100, Math.max(70, 75 + (item.growth % 20)))
-    }))
+    const teachingEfficiency = dashboardData.charts?.monthlyGrowth?.length ?
+      dashboardData.charts.monthlyGrowth.map((item, index) => ({
+        month: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'][index] || 'Month',
+        efficiency: Math.min(100, Math.max(80, 85 + (item.growth % 15))),
+        studentSatisfaction: (Math.random() * 1 + 4).toFixed(1),
+        workload: Math.min(100, Math.max(70, 75 + (item.growth % 20)))
+      })) : detailedChartData.teachingEfficiency
 
     return {
       studentPerformance,
@@ -163,7 +168,7 @@ export default function TeacherDashboardPage() {
   const summaryMetrics = [
     {
       title: 'Total Students',
-      value: dashboardData?.teachingStats.totalStudents.toString() || '--',
+      value: dashboardData?.teachingStats?.totalStudents?.toString() || '--',
       change: '+8',
       trend: 'up',
       icon: Users,
@@ -171,7 +176,7 @@ export default function TeacherDashboardPage() {
     },
     {
       title: 'Active Students',
-      value: dashboardData?.teachingStats.activeStudents.toString() || '--',
+      value: dashboardData?.teachingStats?.activeStudents?.toString() || '--',
       change: '+5',
       trend: 'up',
       icon: UserCheck,
@@ -179,7 +184,7 @@ export default function TeacherDashboardPage() {
     },
     {
       title: 'Courses Taught',
-      value: dashboardData?.teachingStats.coursesTaught.toString() || '--',
+      value: dashboardData?.teachingStats?.coursesTaught?.toString() || '--',
       change: 'Current',
       trend: 'stable',
       icon: BookOpen,
@@ -187,7 +192,7 @@ export default function TeacherDashboardPage() {
     },
     {
       title: 'Average Grade',
-      value: dashboardData?.teachingStats.averageGrade || '--',
+      value: dashboardData?.teachingStats?.averageGrade || '--',
       change: '+0.3',
       trend: 'up',
       icon: GraduationCap,
@@ -195,14 +200,16 @@ export default function TeacherDashboardPage() {
     }
   ]
 
-  if (!mounted) {
+  if (!mounted || authLoading) {
     return (
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Teacher Dashboard</h1>
-              <p className="text-muted-foreground">Loading...</p>
+              <p className="text-muted-foreground">
+                {authLoading ? 'Loading authentication...' : 'Loading...'}
+              </p>
             </div>
           </div>
         </div>
@@ -237,7 +244,7 @@ export default function TeacherDashboardPage() {
                 Teacher
               </Badge>
             </div>
-            <p className="text-muted-foreground">Welcome back, {user.name || user.email}! Monitor your students and teaching performance.</p>
+            <p className="text-muted-foreground">Welcome back, {user?.name || user?.email || 'Teacher'}! Monitor your students and teaching performance.</p>
           </div>
           <motion.div 
             className="flex gap-2"
@@ -582,8 +589,8 @@ export default function TeacherDashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {dashboardData?.recentActivity.length ? (
-                        dashboardData.recentActivity.slice(0, 5).map((activity, index) => (
+                      {dashboardData?.recentActivity?.length ? (
+                        dashboardData.recentActivity?.slice(0, 5).map((activity, index) => (
                           <motion.div
                             key={index}
                             initial={{ x: -20, opacity: 0 }}
