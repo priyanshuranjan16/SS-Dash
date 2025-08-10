@@ -1,30 +1,44 @@
-import Joi from 'joi'
 import User from '../models/User.js'
 import bcrypt from 'bcryptjs'
 
 // Validation schemas
-const updateProfileSchema = Joi.object({
-  name: Joi.string().min(2).max(50).messages({
-    'string.min': 'Name must be at least 2 characters long',
-    'string.max': 'Name cannot exceed 50 characters'
-  }),
-  email: Joi.string().email().messages({
-    'string.email': 'Please provide a valid email address'
-  }),
-  bio: Joi.string().max(500).messages({
-    'string.max': 'Bio cannot exceed 500 characters'
-  })
-})
+const updateProfileSchema = {
+  type: 'object',
+  properties: {
+    name: { 
+      type: 'string', 
+      minLength: 2, 
+      maxLength: 50,
+      description: 'User name'
+    },
+    email: { 
+      type: 'string', 
+      format: 'email',
+      description: 'User email'
+    },
+    bio: { 
+      type: 'string', 
+      maxLength: 500,
+      description: 'User bio'
+    }
+  }
+}
 
-const changePasswordSchema = Joi.object({
-  currentPassword: Joi.string().required().messages({
-    'string.empty': 'Current password is required'
-  }),
-  newPassword: Joi.string().required().min(8).messages({
-    'string.empty': 'New password is required',
-    'string.min': 'New password must be at least 8 characters long'
-  })
-})
+const changePasswordSchema = {
+  type: 'object',
+  required: ['currentPassword', 'newPassword'],
+  properties: {
+    currentPassword: { 
+      type: 'string',
+      description: 'Current password'
+    },
+    newPassword: { 
+      type: 'string', 
+      minLength: 8,
+      description: 'New password'
+    }
+  }
+}
 
 export default async function profileRoutes(fastify, options) {
   // Get user profile

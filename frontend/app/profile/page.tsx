@@ -38,44 +38,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../contexts/auth-context'
 import { useRouter } from 'next/navigation'
-
-interface ProfileData {
-  name: string
-  email: string
-  bio: string
-  avatar: string
-  role: string
-  joinDate: string
-  lastActive: string
-  department?: string
-  specialization?: string
-  courses?: string[]
-  achievements?: string[]
-  certifications?: string[]
-  officeHours?: string
-  researchInterests?: string[]
-  publications?: string[]
-  teachingExperience?: number
-  studentCount?: number
-  courseCount?: number
-  averageRating?: number
-  completedCourses?: number
-  currentCourses?: number
-  gpa?: number
-  major?: string
-  graduationYear?: number
-  academicStanding?: string
-  advisor?: string
-  thesis?: string
-  internships?: string[]
-  skills?: string[]
-  languages?: string[]
-  systemAccess?: string[]
-  permissions?: string[]
-  lastLogin?: string
-  ipAddress?: string
-  deviceInfo?: string
-}
+import { api, ProfileData } from '../../lib/api'
 
 export default function ProfilePage() {
   const { user, logout } = useAuth()
@@ -86,6 +49,9 @@ export default function ProfilePage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [profileData, setProfileData] = useState<ProfileData>({
@@ -126,131 +92,160 @@ export default function ProfilePage() {
     }
   }, [mounted, user, router])
 
-  // Update profile data when user changes
+  // Fetch profile data from backend
   useEffect(() => {
-    if (user) {
-      const getRoleSpecificData = () => {
-        const baseData = {
-          name: user.name || 'John Doe',
-          email: user.email || 'john@example.com',
-          role: user.role,
-          joinDate: '2023-01-15',
-          lastActive: '2024-01-20',
-          avatar: `data:image/svg+xml;base64,${btoa(`
-            <svg width="150" height="150" xmlns="http://www.w3.org/2000/svg">
-              <rect width="100%" height="100%" fill="#f3f4f6"/>
-              <circle cx="75" cy="50" r="25" fill="#9ca3af"/>
-              <rect x="37.5" y="90" width="75" height="12" rx="6" fill="#9ca3af"/>
-              <rect x="50" y="112.5" width="50" height="12" rx="6" fill="#9ca3af"/>
-            </svg>
-          `)}`
-        }
+    const fetchProfile = async () => {
+      if (user && mounted) {
+        try {
+          setIsLoading(true)
+          setError(null)
+          const response = await api.getProfile()
+          // Ensure avatar is never empty
+          const userData = {
+            ...response.user,
+            avatar: response.user.avatar || `data:image/svg+xml;base64,${btoa(`
+              <svg width="150" height="150" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100%" height="100%" fill="#f3f4f6"/>
+                <circle cx="75" cy="50" r="25" fill="#9ca3af"/>
+                <rect x="37.5" y="90" width="75" height="12" rx="6" fill="#9ca3af"/>
+                <rect x="50" y="112.5" width="50" height="12" rx="6" fill="#9ca3af"/>
+              </svg>
+            `)}`
+          }
+          setProfileData(userData)
+        } catch (error) {
+          console.error('Failed to fetch profile:', error)
+          setError(error instanceof Error ? error.message : 'Failed to load profile')
+          
+          // Fallback to mock data if API fails
+          const getRoleSpecificData = () => {
+            const baseData = {
+              name: user.name || 'John Doe',
+              email: user.email || 'john@example.com',
+              role: user.role,
+              joinDate: '2023-01-15',
+              lastActive: '2024-01-20',
+              avatar: `data:image/svg+xml;base64,${btoa(`
+                <svg width="150" height="150" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="100%" height="100%" fill="#f3f4f6"/>
+                  <circle cx="75" cy="50" r="25" fill="#9ca3af"/>
+                  <rect x="37.5" y="90" width="75" height="12" rx="6" fill="#9ca3af"/>
+                  <rect x="50" y="112.5" width="50" height="12" rx="6" fill="#9ca3af"/>
+                </svg>
+              `)}`
+            }
 
-        switch (user.role) {
-          case 'teacher':
-            return {
-              ...baseData,
-              bio: 'Passionate educator with 5+ years of experience in computer science and mathematics. Committed to fostering student growth and innovation in technology education.',
-              department: 'Computer Science & Engineering',
-              specialization: 'Software Engineering, AI & Machine Learning',
-              courses: [
-                'CS101: Introduction to Programming',
-                'CS201: Data Structures & Algorithms', 
-                'CS301: Advanced Algorithms',
-                'CS401: Machine Learning Fundamentals',
-                'CS501: Software Engineering Principles'
-              ],
-              achievements: [
-                'Best Teacher Award 2023 - Computer Science Department',
-                'Published 15 Research Papers in Top-tier Journals',
-                'Mentored 50+ Students to Successful Careers',
-                'Led 3 National Research Projects',
-                'Speaker at 5 International Conferences'
-              ],
-              certifications: [
-                'Google Certified Educator Level 2',
-                'Microsoft Certified Trainer (MCT)',
-                'AWS Certified Solutions Architect',
-                'Certified Scrum Master (CSM)',
-                'Oracle Certified Professional Java Programmer'
-              ],
-              officeHours: 'Mon, Wed, Fri 2:00 PM - 4:00 PM | Tue, Thu 10:00 AM - 12:00 PM',
-              researchInterests: [
-                'Machine Learning & Artificial Intelligence',
-                'Computer Vision & Image Processing',
-                'Educational Technology & E-Learning',
-                'Natural Language Processing',
-                'Software Engineering & DevOps'
-              ],
-              publications: [
-                '"AI in Education: A Comprehensive Review" - IEEE Transactions on Education, 2023',
-                '"Student Performance Prediction Using Machine Learning" - ACM SIGCSE, 2022',
-                '"Adaptive Learning Systems: A Survey" - International Journal of Educational Technology, 2023',
-                '"Computer Vision Applications in Educational Assessment" - Computer Vision and Pattern Recognition, 2022'
-              ],
-              teachingExperience: 7,
-              studentCount: 156,
-              courseCount: 12,
-              averageRating: 4.9
+            switch (user.role) {
+              case 'teacher':
+                return {
+                  ...baseData,
+                  bio: 'Passionate educator with 5+ years of experience in computer science and mathematics. Committed to fostering student growth and innovation in technology education.',
+                  department: 'Computer Science & Engineering',
+                  specialization: 'Software Engineering, AI & Machine Learning',
+                  courses: [
+                    'CS101: Introduction to Programming',
+                    'CS201: Data Structures & Algorithms', 
+                    'CS301: Advanced Algorithms',
+                    'CS401: Machine Learning Fundamentals',
+                    'CS501: Software Engineering Principles'
+                  ],
+                  achievements: [
+                    'Best Teacher Award 2023 - Computer Science Department',
+                    'Published 15 Research Papers in Top-tier Journals',
+                    'Mentored 50+ Students to Successful Careers',
+                    'Led 3 National Research Projects',
+                    'Speaker at 5 International Conferences'
+                  ],
+                  certifications: [
+                    'Google Certified Educator Level 2',
+                    'Microsoft Certified Trainer (MCT)',
+                    'AWS Certified Solutions Architect',
+                    'Certified Scrum Master (CSM)',
+                    'Oracle Certified Professional Java Programmer'
+                  ],
+                  officeHours: 'Mon, Wed, Fri 2:00 PM - 4:00 PM | Tue, Thu 10:00 AM - 12:00 PM',
+                  researchInterests: [
+                    'Machine Learning & Artificial Intelligence',
+                    'Computer Vision & Image Processing',
+                    'Educational Technology & E-Learning',
+                    'Natural Language Processing',
+                    'Software Engineering & DevOps'
+                  ],
+                  publications: [
+                    '"AI in Education: A Comprehensive Review" - IEEE Transactions on Education, 2023',
+                    '"Student Performance Prediction Using Machine Learning" - ACM SIGCSE, 2022',
+                    '"Adaptive Learning Systems: A Survey" - International Journal of Educational Technology, 2023',
+                    '"Computer Vision Applications in Educational Assessment" - Computer Vision and Pattern Recognition, 2022'
+                  ],
+                  teachingExperience: 7,
+                  studentCount: 156,
+                  courseCount: 12,
+                  averageRating: 4.9
+                }
+              
+              case 'admin':
+                return {
+                  ...baseData,
+                  bio: 'System administrator with expertise in educational technology and platform management. Ensuring secure, efficient, and scalable learning environments.',
+                  systemAccess: [
+                    'User Management & Role Assignment',
+                    'System Configuration & Settings',
+                    'Analytics Dashboard & Reporting',
+                    'Security Settings & Access Control',
+                    'Database Management & Backup',
+                    'API Management & Integration',
+                    'Log Monitoring & Audit Trails',
+                    'Performance Monitoring & Optimization'
+                  ],
+                  permissions: [
+                    'view:all-users', 'manage:users', 'view:analytics', 
+                    'manage:system', 'manage:roles', 'manage:security',
+                    'manage:database', 'manage:api', 'view:logs',
+                    'manage:performance', 'manage:backups'
+                  ],
+                  lastLogin: '2024-01-20 14:30:00 UTC',
+                  ipAddress: '192.168.1.100 (Internal Network)',
+                  deviceInfo: 'Chrome 120.0.0.0 on Windows 11 Pro (Build 22621)'
+                }
+              
+              case 'student':
+              default:
+                return {
+                  ...baseData,
+                  bio: 'Dedicated student pursuing excellence in computer science and software development. Passionate about learning and building innovative solutions.',
+                  completedCourses: 18,
+                  currentCourses: 5,
+                  gpa: 3.92,
+                  major: 'Computer Science & Engineering',
+                  graduationYear: 2025,
+                  academicStanding: 'Dean\'s List - Outstanding Academic Performance',
+                  advisor: 'Dr. Sarah Johnson, Ph.D.',
+                  thesis: 'Machine Learning Applications in Educational Technology: A Comprehensive Study',
+                  internships: [
+                    'Google Summer Internship 2023 - Software Engineering',
+                    'Microsoft Research Internship 2022 - AI/ML',
+                    'Amazon Web Services Internship 2022 - Cloud Computing',
+                    'Meta AI Research Internship 2023 - Computer Vision'
+                  ],
+                  skills: [
+                    'JavaScript/TypeScript', 'Python', 'React/Next.js', 'Node.js', 
+                    'Machine Learning', 'TensorFlow', 'PyTorch', 'AWS/Azure',
+                    'Docker', 'Kubernetes', 'Git', 'SQL/NoSQL'
+                  ],
+                  languages: ['English (Native)', 'Spanish (Fluent)', 'Mandarin (Intermediate)']
+                }
             }
-          
-          case 'admin':
-            return {
-              ...baseData,
-              bio: 'System administrator with expertise in educational technology and platform management. Ensuring secure, efficient, and scalable learning environments.',
-              systemAccess: [
-                'User Management & Role Assignment',
-                'System Configuration & Settings',
-                'Analytics Dashboard & Reporting',
-                'Security Settings & Access Control',
-                'Database Management & Backup',
-                'API Management & Integration',
-                'Log Monitoring & Audit Trails',
-                'Performance Monitoring & Optimization'
-              ],
-              permissions: [
-                'view:all-users', 'manage:users', 'view:analytics', 
-                'manage:system', 'manage:roles', 'manage:security',
-                'manage:database', 'manage:api', 'view:logs',
-                'manage:performance', 'manage:backups'
-              ],
-              lastLogin: '2024-01-20 14:30:00 UTC',
-              ipAddress: '192.168.1.100 (Internal Network)',
-              deviceInfo: 'Chrome 120.0.0.0 on Windows 11 Pro (Build 22621)'
-            }
-          
-          case 'student':
-          default:
-            return {
-              ...baseData,
-              bio: 'Dedicated student pursuing excellence in computer science and software development. Passionate about learning and building innovative solutions.',
-              completedCourses: 18,
-              currentCourses: 5,
-              gpa: 3.92,
-              major: 'Computer Science & Engineering',
-              graduationYear: 2025,
-              academicStanding: 'Dean\'s List - Outstanding Academic Performance',
-              advisor: 'Dr. Sarah Johnson, Ph.D.',
-              thesis: 'Machine Learning Applications in Educational Technology: A Comprehensive Study',
-              internships: [
-                'Google Summer Internship 2023 - Software Engineering',
-                'Microsoft Research Internship 2022 - AI/ML',
-                'Amazon Web Services Internship 2022 - Cloud Computing',
-                'Meta AI Research Internship 2023 - Computer Vision'
-              ],
-              skills: [
-                'JavaScript/TypeScript', 'Python', 'React/Next.js', 'Node.js', 
-                'Machine Learning', 'TensorFlow', 'PyTorch', 'AWS/Azure',
-                'Docker', 'Kubernetes', 'Git', 'SQL/NoSQL'
-              ],
-              languages: ['English (Native)', 'Spanish (Fluent)', 'Mandarin (Intermediate)']
-            }
+          }
+
+          setProfileData(getRoleSpecificData())
+        } finally {
+          setIsLoading(false)
         }
       }
-
-      setProfileData(getRoleSpecificData())
     }
-  }, [user])
+
+    fetchProfile()
+  }, [user, mounted])
 
   // Update form data when profile data changes
   useEffect(() => {
@@ -262,9 +257,17 @@ export default function ProfilePage() {
     }))
   }, [profileData])
 
-  const handleLogout = () => {
-    logout()
-    router.push('/login')
+  const handleLogout = async () => {
+    try {
+      await api.logout()
+      logout()
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout failed:', error)
+      // Still logout locally even if API call fails
+      logout()
+      router.push('/login')
+    }
   }
 
   const handleEdit = () => {
@@ -286,7 +289,7 @@ export default function ProfilePage() {
     setErrors({})
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newErrors: Record<string, string> = {}
 
     // Validation
@@ -320,20 +323,46 @@ export default function ProfilePage() {
       return
     }
 
-    // Update profile data
-    setProfileData(prev => ({
-      ...prev,
-      name: formData.name,
-      email: formData.email,
-      bio: formData.bio
-    }))
+    try {
+      setIsLoading(true)
+      setError(null)
+      setSuccess(null)
 
-    setIsEditing(false)
-    setIsChangingPassword(false)
-    setErrors({})
+      if (isChangingPassword) {
+        // Handle password change
+        await api.changePassword({
+          currentPassword: formData.currentPassword,
+          newPassword: formData.newPassword
+        })
+        setSuccess('Password updated successfully!')
+      } else {
+        // Handle profile update
+        const response = await api.updateProfile({
+          name: formData.name,
+          email: formData.email,
+          bio: formData.bio
+        })
+        
+        // Update local profile data
+        setProfileData(prev => ({
+          ...prev,
+          name: formData.name,
+          email: formData.email,
+          bio: formData.bio
+        }))
+        
+        setSuccess('Profile updated successfully!')
+      }
 
-    // In a real app, you would make an API call here
-    console.log('Profile updated:', formData)
+      setIsEditing(false)
+      setIsChangingPassword(false)
+      setErrors({})
+    } catch (error) {
+      console.error('Failed to update profile:', error)
+      setError(error instanceof Error ? error.message : 'Failed to update profile')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleAvatarClick = () => {
@@ -428,17 +457,17 @@ export default function ProfilePage() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.2 }}
         >
-                     <div>
-             <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-             <p className="text-muted-foreground">
-               {user?.role === 'teacher' 
-                 ? 'Manage your teaching profile and academic information'
-                 : user?.role === 'admin'
-                 ? 'System administration profile and security settings'
-                 : 'Manage your academic profile and personal information'
-               }
-             </p>
-           </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+            <p className="text-muted-foreground">
+              {user?.role === 'teacher' 
+                ? 'Manage your teaching profile and academic information'
+                : user?.role === 'admin'
+                ? 'System administration profile and security settings'
+                : 'Manage your academic profile and personal information'
+              }
+            </p>
+          </div>
           <motion.div 
             className="flex gap-2"
             initial={{ scale: 0.9, opacity: 0 }}
@@ -451,6 +480,44 @@ export default function ProfilePage() {
             </Button>
           </motion.div>
         </motion.div>
+
+        {/* Error and Success Messages */}
+        <AnimatePresence mode="wait">
+          {error && (
+            <motion.div
+              className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              {error}
+            </motion.div>
+          )}
+          {success && (
+            <motion.div
+              className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              {success}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Loading State */}
+        {isLoading && (
+          <motion.div
+            className="flex items-center justify-center p-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+              <p className="text-muted-foreground">Loading profile...</p>
+            </div>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Avatar Section */}
@@ -476,11 +543,13 @@ export default function ProfilePage() {
                     onClick={handleAvatarClick}
                   >
                     <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-border bg-muted">
-                      <img
-                        src={profileData.avatar}
-                        alt="Profile"
-                        className="w-full h-full object-cover"
-                      />
+                      {profileData.avatar && (
+                        <img
+                          src={profileData.avatar}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </div>
                     <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Camera className="w-8 h-8 text-white" />
@@ -600,9 +669,18 @@ export default function ProfilePage() {
                         transition={{ duration: 0.2 }}
                         className="flex gap-2"
                       >
-                        <Button onClick={handleSave} size="sm">
-                          <Save className="w-4 h-4 mr-2" />
-                          Save
+                        <Button onClick={handleSave} size="sm" disabled={isLoading}>
+                          {isLoading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2" />
+                              Save
+                            </>
+                          )}
                         </Button>
                         <Button onClick={handleCancel} variant="outline" size="sm">
                           <X className="w-4 h-4 mr-2" />
@@ -725,9 +803,18 @@ export default function ProfilePage() {
                         transition={{ duration: 0.2 }}
                         className="flex gap-2"
                       >
-                        <Button onClick={handleSave} size="sm">
-                          <Save className="w-4 h-4 mr-2" />
-                          Update Password
+                        <Button onClick={handleSave} size="sm" disabled={isLoading}>
+                          {isLoading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Updating...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2" />
+                              Update Password
+                            </>
+                          )}
                         </Button>
                         <Button onClick={handleCancel} variant="outline" size="sm">
                           <X className="w-4 h-4 mr-2" />

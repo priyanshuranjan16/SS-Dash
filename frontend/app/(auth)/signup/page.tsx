@@ -7,24 +7,45 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useAuth } from '../../../contexts/auth-context'
 import { useRouter } from 'next/navigation'
+import { api } from '../../../lib/api'
 
 export default function SignupPage() {
   const { login } = useAuth()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  async function onSubmit(values: { email: string; password: string; role?: "student" | "teacher" | "admin" }) {
+  async function onSubmit(values: { name?: string; email: string; password: string; role?: "student" | "teacher" | "admin" }) {
     try {
-      // In a real app, you would send signup data to your backend
-      // For demo purposes, we'll simulate signup and auto-login
+      setIsLoading(true)
+      setError(null)
       console.log('Signup values:', values)
       
-      // Simulate successful signup and auto-login with the selected role
-      const user = await login(values.email, values.password, values.role)
+      // Call your backend API using the api utility
+      if (!values.name) {
+        throw new Error('Name is required')
+      }
+      
+      const data = await api.register({
+        name: values.name,
+        email: values.email,
+        password: values.password,
+        role: values.role || 'student'
+      })
+
+      console.log('Registration successful:', data)
+      
+      // Token is automatically stored in cookie by the API
+      // Store user data in localStorage for context
+      localStorage.setItem('user', JSON.stringify(data.user))
+      
+      // Auto-login with the received data
+      await login(values.email, values.password, values.role)
       
       // Redirect based on selected role
       const targetRole = values.role || 'student'
@@ -42,7 +63,9 @@ export default function SignupPage() {
       }
     } catch (error) {
       console.error('Signup failed:', error)
-      // Handle error (show toast, etc.)
+      setError(error instanceof Error ? error.message : 'Registration failed')
+    } finally {
+      setIsLoading(false)
     }
   }
   // <PasswordStrength password={form.watch('password')} />
@@ -69,8 +92,17 @@ export default function SignupPage() {
       <div className="w-full max-w-md mx-auto p-6">
         <AuthCard
           title="Create an account"
-          description="Enter your email to create a new account"
+          description="Enter your details to create a new account"
         >
+          {error && (
+            <motion.div
+              className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              {error}
+            </motion.div>
+          )}
           <AuthForm type="signup" onSubmit={onSubmit} />
           <motion.p 
             className="px-8 text-center text-sm text-muted-foreground"

@@ -1,36 +1,51 @@
-import Joi from 'joi'
 import User from '../models/User.js'
 import { generateUserToken } from '../utils/jwt.js'
 
 // Validation schemas
-const registerSchema = Joi.object({
-  name: Joi.string().required().min(2).max(50).messages({
-    'string.empty': 'Name is required',
-    'string.min': 'Name must be at least 2 characters long',
-    'string.max': 'Name cannot exceed 50 characters'
-  }),
-  email: Joi.string().email().required().messages({
-    'string.email': 'Please provide a valid email address',
-    'string.empty': 'Email is required'
-  }),
-  password: Joi.string().required().min(8).messages({
-    'string.empty': 'Password is required',
-    'string.min': 'Password must be at least 8 characters long'
-  }),
-  role: Joi.string().valid('student', 'teacher', 'admin').default('student').messages({
-    'any.only': 'Role must be student, teacher, or admin'
-  })
-})
+const registerSchema = {
+  type: 'object',
+  required: ['name', 'email', 'password'],
+  properties: {
+    name: { 
+      type: 'string', 
+      minLength: 2, 
+      maxLength: 50,
+      description: 'User name'
+    },
+    email: { 
+      type: 'string', 
+      format: 'email',
+      description: 'User email'
+    },
+    password: { 
+      type: 'string', 
+      minLength: 8,
+      description: 'User password'
+    },
+    role: { 
+      type: 'string', 
+      enum: ['student', 'teacher', 'admin'],
+      default: 'student',
+      description: 'User role'
+    }
+  }
+}
 
-const loginSchema = Joi.object({
-  email: Joi.string().email().required().messages({
-    'string.email': 'Please provide a valid email address',
-    'string.empty': 'Email is required'
-  }),
-  password: Joi.string().required().messages({
-    'string.empty': 'Password is required'
-  })
-})
+const loginSchema = {
+  type: 'object',
+  required: ['email', 'password'],
+  properties: {
+    email: { 
+      type: 'string', 
+      format: 'email',
+      description: 'User email'
+    },
+    password: { 
+      type: 'string',
+      description: 'User password'
+    }
+  }
+}
 
 export default async function authRoutes(fastify, options) {
   // Register endpoint

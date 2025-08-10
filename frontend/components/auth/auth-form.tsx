@@ -20,11 +20,21 @@ import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 const formSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters" }).optional(),
   email: z.string().email({ message: "Please enter a valid email" }),
   password: z.string().min(8, {
     message: "Password must be at least 8 characters",
   }),
   role: z.enum(["student", "teacher", "admin"]).optional(),
+}).refine((data) => {
+  // For signup, name is required
+  if (typeof window !== 'undefined' && window.location.pathname === '/signup') {
+    return data.name && data.name.length >= 2
+  }
+  return true
+}, {
+  message: "Name is required for signup",
+  path: ["name"]
 });
 
 interface AuthFormProps {
@@ -42,6 +52,7 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      name: "",
       email: "",
       password: "",
       role: "student",
@@ -74,6 +85,34 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
+        {type === "signup" && (
+          <AuthTransition>
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ duration: 0.1 }}
+                    >
+                      <Input
+                        placeholder="Enter your name"
+                        {...field}
+                        className="h-10"
+                      />
+                    </motion.div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </AuthTransition>
+        )}
+
         <AuthTransition>
           <FormField
             control={form.control}
@@ -127,36 +166,38 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
           />
         </AuthTransition>
 
-        <AuthTransition>
-          <FormField
-            control={form.control}
-            name="role"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Role</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      transition={{ duration: 0.1 }}
-                    >
-                      <SelectTrigger className="h-10">
-                        <SelectValue placeholder="Select your role" />
-                      </SelectTrigger>
-                    </motion.div>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="teacher">Teacher</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </AuthTransition>
+        {type === "signup" && (
+          <AuthTransition>
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Role</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        transition={{ duration: 0.1 }}
+                      >
+                        <SelectTrigger className="h-10">
+                          <SelectValue placeholder="Select your role" />
+                        </SelectTrigger>
+                      </motion.div>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="teacher">Teacher</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </AuthTransition>
+        )}
 
         <AuthTransition>
           <motion.div

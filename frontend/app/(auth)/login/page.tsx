@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useAuth } from '../../../contexts/auth-context'
 import { useRouter } from 'next/navigation'
+import { api } from '../../../lib/api'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -17,9 +18,24 @@ export default function LoginPage() {
     setMounted(true)
   }, [])
 
-  async function onSubmit(values: { email: string; password: string; role?: "student" | "teacher" | "admin" }) {
+  async function onSubmit(values: { name?: string; email: string; password: string; role?: "student" | "teacher" | "admin" }) {
     try {
-      const user = await login(values.email, values.password, values.role)
+      console.log('Login values:', values)
+      
+      // Call your backend API using the api utility
+      const data = await api.login({
+        email: values.email,
+        password: values.password
+      })
+
+      console.log('Login successful:', data)
+      
+      // Token is automatically stored in cookie by the API
+      // Store user data in localStorage for context
+      localStorage.setItem('user', JSON.stringify(data.user))
+      
+      // Use the login function from context
+      const user = await login(values.email, values.password, data.user.role)
       
       // Get redirect URL from query params or use default based on role
       const searchParams = new URLSearchParams(window.location.search)
@@ -29,7 +45,7 @@ export default function LoginPage() {
         router.push(redirectTo)
       } else {
         // Redirect based on role
-        switch (user.role) {
+        switch (data.user.role) {
           case 'admin':
             router.push('/admin/dashboard')
             break
@@ -45,6 +61,7 @@ export default function LoginPage() {
     } catch (error) {
       console.error('Login failed:', error)
       // Handle error (show toast, etc.)
+      alert(error instanceof Error ? error.message : 'Login failed')
     }
   }
 
