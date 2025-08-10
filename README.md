@@ -74,15 +74,10 @@ cd backend
 # Install dependencies
 npm install
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your configuration
 
-# Start MongoDB using Docker
-docker-compose up -d
 
 # Start the development server
-npm run dev
+node src/server.js
 ```
 
 The backend will be running on `http://localhost:3001`
