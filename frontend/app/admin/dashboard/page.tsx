@@ -473,7 +473,26 @@ export default function AdminDashboardPage() {
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))', 
                       border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
+                      borderRadius: '8px',
+                      color: 'hsl(var(--foreground))',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      fontFamily: 'inherit',
+                      padding: '8px 12px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                      backdropFilter: 'blur(8px)',
+                      zIndex: 1000
+                    }}
+                    labelStyle={{
+                      color: 'hsl(var(--foreground))',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      marginBottom: '4px'
+                    }}
+                    itemStyle={{
+                      color: 'hsl(var(--muted-foreground))',
+                      fontSize: '13px',
+                      fontWeight: '400'
                     }}
                   />
                   <Bar yAxisId="left" dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
@@ -510,7 +529,26 @@ export default function AdminDashboardPage() {
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))', 
                       border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
+                      borderRadius: '8px',
+                      color: 'hsl(var(--foreground))',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      fontFamily: 'inherit',
+                      padding: '8px 12px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                      backdropFilter: 'blur(8px)',
+                      zIndex: 1000
+                    }}
+                    labelStyle={{
+                      color: 'hsl(var(--foreground))',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      marginBottom: '4px'
+                    }}
+                    itemStyle={{
+                      color: 'hsl(var(--muted-foreground))',
+                      fontSize: '13px',
+                      fontWeight: '400'
                     }}
                   />
                   <Funnel dataKey="value" data={userFunnel} isAnimationActive>
