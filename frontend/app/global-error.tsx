@@ -26,7 +26,7 @@ export default function GlobalError({
             <motion.div
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
+              transition={{ duration: 0.2 }}
               className="text-center mb-8"
             >
               <div className="w-24 h-24 mx-auto mb-6 bg-red-500/10 rounded-full flex items-center justify-center">
@@ -42,7 +42,7 @@ export default function GlobalError({
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.4 }}
+              transition={{ duration: 0.3 }}
             >
               <Card>
                 <CardHeader>
@@ -85,7 +85,7 @@ export default function GlobalError({
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.6 }}
+              transition={{ duration: 0.3 }}
               className="mt-6 text-center"
             >
               <p className="text-sm text-muted-foreground">

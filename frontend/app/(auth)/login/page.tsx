@@ -77,7 +77,7 @@ export default function LoginPage() {
             className="px-8 text-center text-sm text-muted-foreground"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.3 }}
+            transition={{ duration: 0.3 }}
           >
             Don't have an account?{' '}
             <motion.span
@@ -86,7 +86,7 @@ export default function LoginPage() {
             >
               <Link
                 href="/signup"
-                className="underline underline-offset-4 hover:text-primary transition-colors"
+                className="underline underline-offset-4 hover:text-primary"
               >
                 Sign up
               </Link>

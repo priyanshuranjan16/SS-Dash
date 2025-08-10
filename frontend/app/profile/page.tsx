@@ -426,7 +426,7 @@ export default function ProfilePage() {
           className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.1 }}
+          transition={{ duration: 0.2 }}
         >
                      <div>
              <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
@@ -443,7 +443,7 @@ export default function ProfilePage() {
             className="flex gap-2"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2 }}
+            transition={{ duration: 0.2 }}
           >
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-2" />
@@ -457,7 +457,7 @@ export default function ProfilePage() {
           <motion.div
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
+            transition={{ duration: 0.2 }}
             className="lg:col-span-1"
           >
             <Card>
@@ -562,7 +562,7 @@ export default function ProfilePage() {
           <motion.div
             initial={{ x: 20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.4 }}
+            transition={{ duration: 0.3 }}
             className="lg:col-span-2 space-y-6"
           >
             <Card>
@@ -864,7 +864,7 @@ export default function ProfilePage() {
               <motion.div
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.8 }}
+                transition={{ duration: 0.3 }}
                 className="space-y-6"
               >
                 {/* Teaching Information */}
@@ -1016,7 +1016,7 @@ export default function ProfilePage() {
               <motion.div
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.8 }}
+                transition={{ duration: 0.3 }}
                 className="space-y-6"
               >
                 {/* Academic Information */}
@@ -1152,7 +1152,7 @@ export default function ProfilePage() {
               <motion.div
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.8 }}
+                transition={{ duration: 0.3 }}
                 className="space-y-6"
               >
                 {/* System Access */}

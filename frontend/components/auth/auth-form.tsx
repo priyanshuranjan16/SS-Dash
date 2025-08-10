@@ -100,7 +100,7 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
           />
         </AuthTransition>
 
-        <AuthTransition delay={0.1}>
+        <AuthTransition>
           <FormField
             control={form.control}
             name="password"
@@ -127,7 +127,7 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
           />
         </AuthTransition>
 
-        <AuthTransition delay={0.15}>
+        <AuthTransition>
           <FormField
             control={form.control}
             name="role"
@@ -158,7 +158,7 @@ export function AuthForm({ type, onSubmit }: AuthFormProps) {
           />
         </AuthTransition>
 
-        <AuthTransition delay={0.25}>
+        <AuthTransition>
           <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}

@@ -224,18 +224,18 @@ export default function DashboardPage() {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
+          transition={{ duration: 0.3 }}
         >
           {summaryMetrics.map((metric, index) => (
             <motion.div
               key={metric.title}
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.5 + index * 0.1 }}
+              transition={{ duration: 0.2 }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Card className="hover:shadow-lg transition-shadow">
+              <Card className="hover:shadow-lg">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {metric.title}
@@ -263,13 +263,13 @@ export default function DashboardPage() {
           className="grid grid-cols-1 lg:grid-cols-2 gap-6"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.6 }}
+          transition={{ duration: 0.3 }}
         >
           {/* Course Progress Chart */}
           <motion.div
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.7 }}
+            transition={{ duration: 0.2 }}
           >
             <Card>
               <CardHeader>
@@ -300,7 +300,7 @@ export default function DashboardPage() {
           <motion.div
             initial={{ x: 20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.8 }}
+            transition={{ duration: 0.2 }}
           >
             <Card>
               <CardHeader>
@@ -339,13 +339,13 @@ export default function DashboardPage() {
           className="grid grid-cols-1 lg:grid-cols-3 gap-6"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.9 }}
+          transition={{ duration: 0.3 }}
         >
           {/* Grade Distribution */}
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 1.0 }}
+            transition={{ duration: 0.2 }}
             className="lg:col-span-1"
           >
             <Card>
@@ -387,7 +387,7 @@ export default function DashboardPage() {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 1.1 }}
+            transition={{ duration: 0.2 }}
             className="lg:col-span-2"
           >
             <Card>
@@ -427,7 +427,7 @@ export default function DashboardPage() {
           className="grid grid-cols-1 gap-6"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 1.2 }}
+          transition={{ duration: 0.3 }}
         >
           <Card>
             <CardHeader>
@@ -464,7 +464,7 @@ export default function DashboardPage() {
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 1.3 }}
+          transition={{ duration: 0.3 }}
         >
           <Card>
             <CardHeader>
@@ -484,8 +484,8 @@ export default function DashboardPage() {
                     key={index}
                     initial={{ x: -20, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 1.4 + index * 0.1 }}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
+                    transition={{ duration: 0.2 }}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">

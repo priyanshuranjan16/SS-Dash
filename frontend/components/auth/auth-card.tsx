@@ -29,7 +29,7 @@ export function AuthCard({
           className="space-y-2 text-center"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.4 }}
+          transition={{ duration: 0.3 }}
         >
           <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
           {description && (
@@ -39,7 +39,7 @@ export function AuthCard({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
+          transition={{ duration: 0.3 }}
         >
           {children}
         </motion.div>

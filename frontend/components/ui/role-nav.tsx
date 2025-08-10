@@ -109,14 +109,14 @@ export function RoleNav() {
       className="flex flex-wrap gap-2 p-4 bg-card/50 rounded-lg border border-border"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3 }}
+                transition={{ duration: 0.2 }}
     >
       {filteredItems.map((item, index) => (
         <motion.div
           key={item.href}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4 + index * 0.1 }}
+                      transition={{ duration: 0.2 }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
