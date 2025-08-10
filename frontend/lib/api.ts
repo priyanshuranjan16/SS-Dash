@@ -71,6 +71,62 @@ export interface ProfileResponse {
   user: ProfileData
 }
 
+export interface DashboardData {
+  metrics: {
+    totalUsers: number
+    activeUsers: number
+    weeklySignups: number
+    revenue: number
+  }
+  charts: {
+    weeklyActivity: Array<{
+      date: string
+      teachers: number
+      students: number
+      signups: number
+    }>
+    monthlyGrowth: Array<{
+      month: string
+      growth: number
+      revenue: number
+    }>
+    roleDistribution: Array<{
+      role: string
+      count: number
+      percentage: number
+    }>
+  }
+  recentActivity: Array<{
+    user: string
+    action: string
+    timestamp: string
+    details: any
+  }>
+}
+
+export interface DashboardResponse {
+  success: boolean
+  data: DashboardData
+}
+
+export interface AdminDashboardData extends DashboardData {
+  systemHealth: {
+    uptime: number
+    memoryUsage: any
+    activeConnections: number
+    databaseStatus: string
+  }
+}
+
+export interface TeacherDashboardData extends DashboardData {
+  teachingStats: {
+    totalStudents: number
+    activeStudents: number
+    coursesTaught: number
+    averageGrade: string
+  }
+}
+
 // Cookie utilities
 const setCookie = (name: string, value: string, days: number = 7) => {
   const expires = new Date()
@@ -236,5 +292,95 @@ export const api = {
     // Remove token from cookie and localStorage
     this.removeToken()
     return { success: true }
+  },
+
+  async getDashboard(): Promise<DashboardResponse> {
+    const token = this.getToken()
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
+    const response = await fetch(`${API_BASE_URL}/dashboard`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to get dashboard data')
+    }
+
+    return result
+  },
+
+  async getAdminDashboard(): Promise<{ success: boolean; data: AdminDashboardData }> {
+    const token = this.getToken()
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
+    const response = await fetch(`${API_BASE_URL}/dashboard/admin`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to get admin dashboard data')
+    }
+
+    return result
+  },
+
+  async getTeacherDashboard(): Promise<{ success: boolean; data: TeacherDashboardData }> {
+    const token = this.getToken()
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
+    const response = await fetch(`${API_BASE_URL}/dashboard/teacher`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to get teacher dashboard data')
+    }
+
+    return result
+  },
+
+  async logActivity(action: string, details?: any): Promise<{ success: boolean; message: string }> {
+    const token = this.getToken()
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
+    const response = await fetch(`${API_BASE_URL}/dashboard/activity`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action, details }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to log activity')
+    }
+
+    return result
   }
 }

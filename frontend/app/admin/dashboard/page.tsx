@@ -1,77 +1,41 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, Search, Users, BookOpen, TrendingUp, Filter, Download, LogOut, Shield, UserCheck, GraduationCap, Clock, Target, Award, MessageSquare, Star, BarChart3, FileText, Database, Settings, Activity, Zap } from 'lucide-react'
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, ScatterChart, Scatter, ComposedChart, FunnelChart, Funnel, Cell as FunnelCell } from 'recharts'
+import { Calendar, Search, Users, BookOpen, TrendingUp, Filter, Download, LogOut, Shield, UserCheck, GraduationCap, Clock, Target, Award, Settings, BarChart3, FileText, Loader2, Activity, Database, Server } from 'lucide-react'
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, ScatterChart, Scatter, ComposedChart } from 'recharts'
 import { useAuth } from '../../../contexts/auth-context'
 import { useRouter } from 'next/navigation'
 import { RoleNav } from '../../../components/ui/role-nav'
+import { api, AdminDashboardData } from '../../../lib/api'
 
-// Admin-specific mock data
-const systemPerformanceData = [
-  { time: '00:00', cpu: 45, memory: 62, disk: 28, network: 35 },
-  { time: '04:00', cpu: 38, memory: 58, disk: 30, network: 42 },
-  { time: '08:00', cpu: 72, memory: 75, disk: 45, network: 68 },
-  { time: '12:00', cpu: 85, memory: 82, disk: 52, network: 78 },
-  { time: '16:00', cpu: 78, memory: 79, disk: 48, network: 72 },
-  { time: '20:00', cpu: 65, memory: 71, disk: 38, network: 58 },
-  { time: '24:00', cpu: 52, memory: 65, disk: 32, network: 45 },
-]
+// Fallback mock data for when API fails
+const fallbackData: AdminDashboardData = {
+  metrics: {
+    totalUsers: 0,
+    activeUsers: 0,
+    weeklySignups: 0,
+    revenue: 0
+  },
+  charts: {
+    weeklyActivity: [],
+    monthlyGrowth: [],
+    roleDistribution: []
+  },
+  recentActivity: [],
+  systemHealth: {
+    uptime: 0,
+    memoryUsage: {},
+    activeConnections: 0,
+    databaseStatus: 'unknown'
+  }
+}
 
-const userGrowthData = [
-  { month: 'Jan', students: 1200, teachers: 45, admins: 8, total: 1253 },
-  { month: 'Feb', students: 1350, teachers: 52, admins: 8, total: 1410 },
-  { month: 'Mar', students: 1480, teachers: 58, admins: 9, total: 1547 },
-  { month: 'Apr', students: 1620, teachers: 65, admins: 9, total: 1694 },
-  { month: 'May', students: 1780, teachers: 72, admins: 10, total: 1862 },
-  { month: 'Jun', students: 1950, teachers: 78, admins: 10, total: 2038 },
-]
-
-const platformAnalytics = [
-  { metric: 'Active Users', value: 2847, change: '+12%', trend: 'up' },
-  { metric: 'Course Completions', value: 1256, change: '+8%', trend: 'up' },
-  { metric: 'System Uptime', value: 99.8, change: '+0.2%', trend: 'up' },
-  { metric: 'Support Tickets', value: 23, change: '-15%', trend: 'down' },
-  { metric: 'Data Usage', value: 85.2, change: '+5%', trend: 'up' },
-]
-
-const userDistribution = [
-  { role: 'Students', count: 1950, color: '#3b82f6' },
-  { role: 'Teachers', count: 78, color: '#10b981' },
-  { role: 'Admins', count: 10, color: '#ef4444' },
-  { role: 'Guests', count: 45, color: '#f59e0b' },
-]
-
-const securityMetrics = [
-  { metric: 'Failed Login Attempts', value: 12, severity: 'low' },
-  { metric: 'Suspicious Activities', value: 3, severity: 'medium' },
-  { metric: 'Data Breach Attempts', value: 0, severity: 'none' },
-  { metric: 'System Vulnerabilities', value: 2, severity: 'low' },
-  { metric: 'Security Patches', value: 15, severity: 'good' },
-]
-
-const revenueData = [
-  { month: 'Jan', revenue: 45000, expenses: 28000, profit: 17000 },
-  { month: 'Feb', revenue: 52000, expenses: 32000, profit: 20000 },
-  { month: 'Mar', revenue: 61000, expenses: 35000, profit: 26000 },
-  { month: 'Apr', revenue: 58000, expenses: 33000, profit: 25000 },
-  { month: 'May', revenue: 72000, expenses: 40000, profit: 32000 },
-  { month: 'Jun', revenue: 68000, expenses: 38000, profit: 30000 },
-]
-
-const userFunnel = [
-  { name: 'Total Visitors', value: 10000, fill: '#3b82f6' },
-  { name: 'Registered Users', value: 3500, fill: '#10b981' },
-  { name: 'Active Users', value: 2847, fill: '#f59e0b' },
-  { name: 'Premium Users', value: 1256, fill: '#ef4444' },
-]
-
-const COLORS = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b']
+const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#dc2626']
 
 export default function AdminDashboardPage() {
   const { user, logout } = useAuth()
@@ -79,6 +43,9 @@ export default function AdminDashboardPage() {
   const [mounted, setMounted] = useState(false)
   const [dateRange, setDateRange] = useState('7d')
   const [searchQuery, setSearchQuery] = useState('')
+  const [dashboardData, setDashboardData] = useState<AdminDashboardData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -90,43 +57,167 @@ export default function AdminDashboardPage() {
     }
   }, [mounted, user, router])
 
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user) return
+      
+      try {
+        setIsLoading(true)
+        setError(null)
+        
+        const response = await api.getAdminDashboard()
+        setDashboardData(response.data)
+        
+        // Log dashboard view activity
+        await api.logActivity('viewed_admin_dashboard', { role: user.role })
+        
+      } catch (err) {
+        console.error('Failed to fetch admin dashboard data:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
+        setDashboardData(fallbackData)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (mounted && user) {
+      fetchDashboardData()
+    }
+  }, [mounted, user])
+
   const handleLogout = () => {
     logout()
     router.push('/login')
   }
 
+  // Transform API data for charts
+  const chartData = useMemo(() => {
+    if (!dashboardData) return {
+      userGrowth: [],
+      revenueTrend: [],
+      roleDistribution: [],
+      systemMetrics: [],
+      weeklyActivity: []
+    }
+
+    // Transform monthly growth to user growth format
+    const userGrowth = dashboardData.charts.monthlyGrowth.map(item => ({
+      month: item.month,
+      users: item.growth * 10, // Mock calculation
+      growth: item.growth
+    }))
+
+    // Transform monthly growth to revenue trend
+    const revenueTrend = dashboardData.charts.monthlyGrowth.map(item => ({
+      month: item.month,
+      revenue: item.revenue,
+      growth: item.growth
+    }))
+
+    // Transform role distribution
+    const roleDistribution = dashboardData.charts.roleDistribution.map((item, index) => ({
+      role: item.role,
+      count: item.count,
+      percentage: item.percentage,
+      color: COLORS[index] || COLORS[0]
+    }))
+
+    // Create system metrics from system health
+    const systemMetrics = [
+      {
+        metric: 'Uptime',
+        value: Math.round(dashboardData.systemHealth.uptime / 3600), // Convert to hours
+        unit: 'hours',
+        status: 'healthy'
+      },
+      {
+        metric: 'Active Connections',
+        value: dashboardData.systemHealth.activeConnections,
+        unit: 'connections',
+        status: 'healthy'
+      },
+      {
+        metric: 'Database Status',
+        value: dashboardData.systemHealth.databaseStatus === 'healthy' ? 100 : 0,
+        unit: '%',
+        status: dashboardData.systemHealth.databaseStatus
+      }
+    ]
+
+    // Transform weekly activity
+    const weeklyActivity = dashboardData.charts.weeklyActivity.map(item => ({
+      day: item.date,
+      users: item.students + item.teachers,
+      signups: item.signups,
+      activity: item.students + item.teachers + item.signups
+    }))
+
+    return {
+      userGrowth,
+      revenueTrend,
+      roleDistribution,
+      systemMetrics,
+      weeklyActivity
+    }
+  }, [dashboardData])
+
   const summaryMetrics = [
     {
       title: 'Total Users',
-      value: '2,038',
-      change: '+185',
+      value: dashboardData?.metrics.totalUsers.toString() || '--',
+      change: '+12%',
       trend: 'up',
       icon: Users,
       color: 'bg-blue-500'
     },
     {
-      title: 'System Uptime',
-      value: '99.8%',
-      change: '+0.2%',
+      title: 'Active Users',
+      value: dashboardData?.metrics.activeUsers.toString() || '--',
+      change: '+8%',
       trend: 'up',
-      icon: Activity,
+      icon: UserCheck,
       color: 'bg-green-500'
     },
     {
-      title: 'Monthly Revenue',
-      value: '$68K',
-      change: '+12%',
+      title: 'Weekly Signups',
+      value: dashboardData?.metrics.weeklySignups.toString() || '--',
+      change: '+15%',
       trend: 'up',
       icon: TrendingUp,
       color: 'bg-purple-500'
     },
     {
-      title: 'Active Courses',
-      value: '156',
-      change: '+8',
+      title: 'Revenue',
+      value: dashboardData?.metrics.revenue ? `$${dashboardData.metrics.revenue.toLocaleString()}` : '--',
+      change: '+5%',
       trend: 'up',
-      icon: BookOpen,
+      icon: Award,
       color: 'bg-amber-500'
+    }
+  ]
+
+  const systemHealthMetrics = [
+    {
+      title: 'System Uptime',
+      value: dashboardData?.systemHealth.uptime ? `${Math.round(dashboardData.systemHealth.uptime / 3600)}h` : '--',
+      status: 'healthy',
+      icon: Server,
+      color: 'bg-green-500'
+    },
+    {
+      title: 'Active Connections',
+      value: dashboardData?.systemHealth.activeConnections.toString() || '--',
+      status: 'healthy',
+      icon: Activity,
+      color: 'bg-blue-500'
+    },
+    {
+      title: 'Database Status',
+      value: dashboardData?.systemHealth.databaseStatus || '--',
+      status: dashboardData?.systemHealth.databaseStatus === 'healthy' ? 'healthy' : 'warning',
+      icon: Database,
+      color: dashboardData?.systemHealth.databaseStatus === 'healthy' ? 'bg-green-500' : 'bg-yellow-500'
     }
   ]
 
@@ -162,7 +253,7 @@ export default function AdminDashboardPage() {
           className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.2 }}
+          transition={{ delay: 0.1 }}
         >
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -172,17 +263,17 @@ export default function AdminDashboardPage() {
                 Administrator
               </Badge>
             </div>
-            <p className="text-muted-foreground">Welcome back, {user.name || user.email}! Monitor system performance and platform analytics.</p>
+            <p className="text-muted-foreground">Welcome back, {user.name || user.email}! Monitor system performance and user activity.</p>
           </div>
           <motion.div 
             className="flex gap-2"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.2 }}
+            transition={{ delay: 0.2 }}
           >
             <Button variant="outline" size="sm">
               <Download className="w-4 h-4 mr-2" />
-              Export Data
+              Export Report
             </Button>
             <Button size="sm">
               <Settings className="w-4 h-4 mr-2" />
@@ -198,12 +289,24 @@ export default function AdminDashboardPage() {
         {/* Role-based Navigation */}
         <RoleNav />
 
+        {/* Error Message */}
+        {error && (
+          <motion.div 
+            className="p-4 bg-red-50 border border-red-200 rounded-md text-red-700"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p className="text-sm">{error}</p>
+            <p className="text-xs mt-1">Showing fallback data</p>
+          </motion.div>
+        )}
+
         {/* Filters */}
         <motion.div 
           className="grid grid-cols-1 md:grid-cols-3 gap-4"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.2 }}
+          transition={{ delay: 0.3 }}
         >
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -220,456 +323,329 @@ export default function AdminDashboardPage() {
             onChange={(e) => setDateRange(e.target.value)}
             className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <option value="7d">Last 7 Days</option>
-            <option value="30d">Last 30 Days</option>
-            <option value="90d">Last 90 Days</option>
+            <option value="7d">This Week</option>
+            <option value="30d">This Month</option>
+            <option value="90d">This Quarter</option>
           </select>
 
           <Button variant="outline" className="flex items-center gap-2">
             <Filter className="w-4 h-4" />
-            Advanced Filters
+            Filter Data
           </Button>
         </motion.div>
 
-        {/* Summary Metrics */}
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          {summaryMetrics.map((metric, index) => (
-            <motion.div
-              key={metric.title}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.2 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Card className="hover:shadow-lg">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {metric.title}
-                  </CardTitle>
-                  <div className={`p-2 rounded-lg ${metric.color}`}>
-                    <metric.icon className="w-4 h-4 text-white" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{metric.value}</div>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                    <span className={`text-${metric.trend === 'up' ? 'green' : metric.trend === 'down' ? 'red' : 'blue'}-500`}>
-                      {metric.change}
-                    </span>
-                    from last month
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        {/* Charts Section */}
-        <motion.div 
-          className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          {/* System Performance */}
-          <motion.div
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.2 }}
+        {/* Loading State */}
+        {isLoading && (
+          <motion.div 
+            className="flex items-center justify-center py-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
           >
-            <Card>
-              <CardHeader>
-                <CardTitle>System Performance</CardTitle>
-                <CardDescription>Real-time system resource utilization</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={systemPerformanceData}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
-                    <XAxis dataKey="time" />
-                    <YAxis />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="cpu" 
-                      stackId="1" 
-                      stroke="#ef4444" 
-                      fill="#ef4444" 
-                      fillOpacity={0.6}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="memory" 
-                      stackId="1" 
-                      stroke="#3b82f6" 
-                      fill="#3b82f6" 
-                      fillOpacity={0.6}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              <span>Loading admin dashboard data...</span>
+            </div>
           </motion.div>
+        )}
 
-          {/* User Growth */}
-          <motion.div
-            initial={{ x: 20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>User Growth</CardTitle>
-                <CardDescription>Platform user growth over the past 6 months</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={userGrowthData}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="students" 
-                      stroke="#3b82f6" 
-                      strokeWidth={3}
-                      dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="teachers" 
-                      stroke="#10b981" 
-                      strokeWidth={3}
-                      dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </motion.div>
-
-        {/* Additional Charts */}
-        <motion.div 
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          {/* User Distribution */}
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.2 }}
-            className="lg:col-span-1"
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>User Distribution</CardTitle>
-                <CardDescription>Current user roles breakdown</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={userDistribution}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="count"
-                    >
-                      {userDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Platform Analytics */}
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.2 }}
-            className="lg:col-span-2"
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Platform Analytics</CardTitle>
-                <CardDescription>Key performance indicators</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={platformAnalytics} layout="horizontal">
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="metric" type="category" width={120} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </motion.div>
-
-        {/* Revenue Analysis */}
-        <motion.div 
-          className="grid grid-cols-1 gap-6"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle>Revenue Analysis</CardTitle>
-              <CardDescription>Monthly revenue, expenses, and profit trends</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <ComposedChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
-                  <XAxis dataKey="month" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                      color: 'hsl(var(--foreground))',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      fontFamily: 'inherit',
-                      padding: '8px 12px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                      backdropFilter: 'blur(8px)',
-                      zIndex: 1000
-                    }}
-                    labelStyle={{
-                      color: 'hsl(var(--foreground))',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      marginBottom: '4px'
-                    }}
-                    itemStyle={{
-                      color: 'hsl(var(--muted-foreground))',
-                      fontSize: '13px',
-                      fontWeight: '400'
-                    }}
-                  />
-                  <Bar yAxisId="left" dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  <Bar yAxisId="left" dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                  <Line 
-                    yAxisId="right"
-                    type="monotone" 
-                    dataKey="profit" 
-                    stroke="#8b5cf6" 
-                    strokeWidth={3}
-                    dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* User Funnel */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle>User Conversion Funnel</CardTitle>
-              <CardDescription>User journey from visitor to premium user</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <FunnelChart data={userFunnel}>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                      color: 'hsl(var(--foreground))',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      fontFamily: 'inherit',
-                      padding: '8px 12px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                      backdropFilter: 'blur(8px)',
-                      zIndex: 1000
-                    }}
-                    labelStyle={{
-                      color: 'hsl(var(--foreground))',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      marginBottom: '4px'
-                    }}
-                    itemStyle={{
-                      color: 'hsl(var(--muted-foreground))',
-                      fontSize: '13px',
-                      fontWeight: '400'
-                    }}
-                  />
-                  <Funnel dataKey="value" data={userFunnel} isAnimationActive>
-                    {userFunnel.map((entry, index) => (
-                      <FunnelCell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Funnel>
-                </FunnelChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Security Metrics */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle>Security Overview</CardTitle>
-              <CardDescription>System security metrics and alerts</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {securityMetrics.map((metric, index) => (
+        {/* Dashboard Content */}
+        <AnimatePresence>
+          {!isLoading && (
+            <>
+              {/* Summary Metrics */}
+              <motion.div 
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {summaryMetrics.map((metric, index) => (
                   <motion.div
-                    key={index}
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50"
+                    key={metric.title}
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.2, delay: index * 0.1 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Shield className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{metric.metric}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {metric.severity === 'none' ? 'No issues detected' : 
-                           metric.severity === 'low' ? 'Low priority' :
-                           metric.severity === 'medium' ? 'Medium priority' : 'High priority'}
+                    <Card className="hover:shadow-lg">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                          {metric.title}
+                        </CardTitle>
+                        <div className={`p-2 rounded-lg ${metric.color}`}>
+                          <metric.icon className="w-4 h-4 text-white" />
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{metric.value}</div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                          <span className={`text-${metric.trend === 'up' ? 'green' : metric.trend === 'down' ? 'red' : 'blue'}-500`}>
+                            {metric.change}
+                          </span>
+                          from last month
                         </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge 
-                        variant={metric.severity === 'none' ? 'default' : 
-                                metric.severity === 'low' ? 'secondary' :
-                                metric.severity === 'medium' ? 'destructive' : 'destructive'}
-                        className="text-xs"
-                      >
-                        {metric.value}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {metric.severity}
-                      </Badge>
-                    </div>
+                      </CardContent>
+                    </Card>
                   </motion.div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              </motion.div>
 
-        {/* Recent System Activity */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent System Activity</CardTitle>
-              <CardDescription>Latest administrative actions and system events</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  { activity: 'System Backup Completed', time: '2 hours ago', type: 'maintenance', status: 'success' },
-                  { activity: 'New User Registration Batch', time: '4 hours ago', type: 'user-management', status: 'info' },
-                  { activity: 'Security Patch Applied', time: '6 hours ago', type: 'security', status: 'success' },
-                  { activity: 'Database Optimization', time: '1 day ago', type: 'maintenance', status: 'success' },
-                  { activity: 'Failed Login Attempt Detected', time: '1 day ago', type: 'security', status: 'warning' },
-                ].map((activity, index) => (
+              {/* System Health Metrics */}
+              <motion.div 
+                className="grid grid-cols-1 md:grid-cols-3 gap-6"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {systemHealthMetrics.map((metric, index) => (
                   <motion.div
-                    key={index}
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50"
+                    key={metric.title}
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.2, delay: index * 0.1 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Activity className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{activity.activity}</p>
-                        <p className="text-sm text-muted-foreground">{activity.time}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge 
-                        variant={activity.status === 'success' ? 'default' : 
-                                activity.status === 'warning' ? 'destructive' : 'secondary'}
-                        className="text-xs"
-                      >
-                        {activity.status}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {activity.type}
-                      </Badge>
-                    </div>
+                    <Card className="hover:shadow-lg">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                          {metric.title}
+                        </CardTitle>
+                        <div className={`p-2 rounded-lg ${metric.color}`}>
+                          <metric.icon className="w-4 h-4 text-white" />
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{metric.value}</div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                          <span className={`text-${metric.status === 'healthy' ? 'green' : 'yellow'}-500`}>
+                            {metric.status}
+                          </span>
+                          status
+                        </p>
+                      </CardContent>
+                    </Card>
                   </motion.div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              </motion.div>
+
+              {/* Charts Section */}
+              <motion.div 
+                className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* User Growth Chart */}
+                <motion.div
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>User Growth</CardTitle>
+                      <CardDescription>Monthly user growth and signup trends</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <AreaChart data={chartData.userGrowth}>
+                          <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
+                          <XAxis dataKey="month" />
+                          <YAxis />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px'
+                            }}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="users" 
+                            stroke="#8b5cf6" 
+                            fill="#8b5cf6" 
+                            fillOpacity={0.6}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                {/* Revenue Trend */}
+                <motion.div
+                  initial={{ x: 20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Revenue Trend</CardTitle>
+                      <CardDescription>Monthly revenue and growth metrics</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={chartData.revenueTrend}>
+                          <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
+                          <XAxis dataKey="month" />
+                          <YAxis />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px'
+                            }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="revenue" 
+                            stroke="#10b981" 
+                            strokeWidth={3}
+                            dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </motion.div>
+
+              {/* Additional Charts */}
+              <motion.div 
+                className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* Role Distribution */}
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className="lg:col-span-1"
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Role Distribution</CardTitle>
+                      <CardDescription>User distribution by role</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <PieChart>
+                          <Pie
+                            data={chartData.roleDistribution}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="count"
+                          >
+                            {chartData.roleDistribution.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px'
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                {/* Weekly Activity */}
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className="lg:col-span-2"
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Weekly Activity</CardTitle>
+                      <CardDescription>User activity and signups by day</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={chartData.weeklyActivity}>
+                          <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
+                          <XAxis dataKey="day" />
+                          <YAxis />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px'
+                            }}
+                          />
+                          <Bar dataKey="users" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="signups" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </motion.div>
+
+              {/* Recent Activity */}
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent System Activity</CardTitle>
+                    <CardDescription>Latest system events and user activities</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {dashboardData?.recentActivity.length ? (
+                        dashboardData.recentActivity.slice(0, 5).map((activity, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ duration: 0.2, delay: index * 0.1 }}
+                            className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <Award className="w-4 h-4 text-primary" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{activity.action}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {new Date(activity.timestamp).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {activity.action.split('_')[0]}
+                            </Badge>
+                          </motion.div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Award className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p>No recent activity to display</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   )

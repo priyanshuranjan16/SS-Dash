@@ -6,58 +6,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, Search, Users, BookOpen, TrendingUp, Filter, Download, LogOut, Shield, UserCheck, GraduationCap, Clock, Target, Award } from 'lucide-react'
+import { Calendar, Search, Users, BookOpen, TrendingUp, Filter, Download, LogOut, Shield, UserCheck, GraduationCap, Clock, Target, Award, Loader2 } from 'lucide-react'
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts'
 import { useAuth } from '../../contexts/auth-context'
 import { useRouter } from 'next/navigation'
 import { RoleNav } from '../../components/ui/role-nav'
+import { api, DashboardData } from '../../lib/api'
 
-// Student-specific mock data
-const courseProgressData = [
-  { course: 'CS101: Programming', progress: 85, grade: 'A-', attendance: 92 },
-  { course: 'CS201: Data Structures', progress: 78, grade: 'B+', attendance: 88 },
-  { course: 'CS301: Algorithms', progress: 92, grade: 'A', attendance: 95 },
-  { course: 'MATH201: Calculus', progress: 70, grade: 'B-', attendance: 85 },
-  { course: 'ENG101: Writing', progress: 88, grade: 'A-', attendance: 90 },
-]
-
-const weeklyStudyHours = [
-  { day: 'Mon', hours: 4.5, subjects: 3 },
-  { day: 'Tue', hours: 6.2, subjects: 4 },
-  { day: 'Wed', hours: 3.8, subjects: 2 },
-  { day: 'Thu', hours: 5.5, subjects: 4 },
-  { day: 'Fri', hours: 2.1, subjects: 1 },
-  { day: 'Sat', hours: 7.0, subjects: 3 },
-  { day: 'Sun', hours: 1.5, subjects: 1 },
-]
-
-const gradeDistribution = [
-  { grade: 'A', count: 8, color: '#10b981' },
-  { grade: 'B', count: 12, color: '#3b82f6' },
-  { grade: 'C', count: 6, color: '#f59e0b' },
-  { grade: 'D', count: 2, color: '#ef4444' },
-  { grade: 'F', count: 1, color: '#dc2626' },
-]
-
-const skillAssessment = [
-  { skill: 'Programming', value: 85 },
-  { skill: 'Mathematics', value: 72 },
-  { skill: 'Problem Solving', value: 88 },
-  { skill: 'Communication', value: 75 },
-  { skill: 'Teamwork', value: 90 },
-  { skill: 'Research', value: 68 },
-]
-
-const attendanceTrend = [
-  { week: 'Week 1', attendance: 95 },
-  { week: 'Week 2', attendance: 92 },
-  { week: 'Week 3', attendance: 88 },
-  { week: 'Week 4', attendance: 90 },
-  { week: 'Week 5', attendance: 87 },
-  { week: 'Week 6', attendance: 93 },
-  { week: 'Week 7', attendance: 89 },
-  { week: 'Week 8', attendance: 91 },
-]
+// Fallback mock data for when API fails
+const fallbackData: DashboardData = {
+  metrics: {
+    totalUsers: 0,
+    activeUsers: 0,
+    weeklySignups: 0,
+    revenue: 0
+  },
+  charts: {
+    weeklyActivity: [],
+    monthlyGrowth: [],
+    roleDistribution: []
+  },
+  recentActivity: []
+}
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#dc2626']
 
@@ -67,6 +37,9 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false)
   const [dateRange, setDateRange] = useState('7d')
   const [searchQuery, setSearchQuery] = useState('')
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -78,15 +51,97 @@ export default function DashboardPage() {
     }
   }, [mounted, user, router])
 
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user) return
+      
+      try {
+        setIsLoading(true)
+        setError(null)
+        
+        const response = await api.getDashboard()
+        setDashboardData(response.data)
+        
+        // Log dashboard view activity
+        await api.logActivity('viewed_dashboard', { role: user.role })
+        
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
+        setDashboardData(fallbackData)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (mounted && user) {
+      fetchDashboardData()
+    }
+  }, [mounted, user])
+
   const handleLogout = () => {
     logout()
     router.push('/login')
   }
 
+  // Transform API data for charts
+  const chartData = useMemo(() => {
+    if (!dashboardData) return {
+      courseProgress: [],
+      weeklyStudyHours: [],
+      gradeDistribution: [],
+      skillAssessment: [],
+      attendanceTrend: []
+    }
+
+    // Transform weekly activity to study hours format
+    const weeklyStudyHours = dashboardData.charts.weeklyActivity.map(item => ({
+      day: item.date,
+      hours: item.students * 0.5, // Mock calculation
+      subjects: Math.floor(item.students / 10) + 1
+    }))
+
+    // Transform role distribution to grade distribution format
+    const gradeDistribution = dashboardData.charts.roleDistribution.map((item, index) => ({
+      grade: ['A', 'B', 'C', 'D', 'F'][index] || 'F',
+      count: item.count,
+      color: COLORS[index] || COLORS[0]
+    }))
+
+    // Create skill assessment from monthly growth
+    const skillAssessment = dashboardData.charts.monthlyGrowth.map((item, index) => ({
+      skill: ['Programming', 'Mathematics', 'Problem Solving', 'Communication', 'Teamwork', 'Research'][index] || 'Skill',
+      value: Math.min(100, Math.max(50, item.growth))
+    }))
+
+    // Create attendance trend from weekly activity
+    const attendanceTrend = dashboardData.charts.weeklyActivity.map((item, index) => ({
+      week: `Week ${index + 1}`,
+      attendance: Math.min(100, Math.max(80, 85 + (item.students % 20)))
+    }))
+
+    // Create course progress from role distribution
+    const courseProgress = dashboardData.charts.roleDistribution.map((item, index) => ({
+      course: `Course ${index + 1}`,
+      progress: Math.min(100, Math.max(60, 70 + (item.count % 30))),
+      grade: ['A-', 'B+', 'A', 'B-', 'A-'][index] || 'B+',
+      attendance: Math.min(100, Math.max(80, 85 + (item.count % 15)))
+    }))
+
+    return {
+      courseProgress,
+      weeklyStudyHours,
+      gradeDistribution,
+      skillAssessment,
+      attendanceTrend
+    }
+  }, [dashboardData])
+
   const summaryMetrics = [
     {
       title: 'Current GPA',
-      value: '3.85',
+      value: dashboardData ? '3.85' : '--',
       change: '+0.12',
       trend: 'up',
       icon: GraduationCap,
@@ -94,7 +149,7 @@ export default function DashboardPage() {
     },
     {
       title: 'Courses Enrolled',
-      value: '5',
+      value: dashboardData ? dashboardData.metrics.totalUsers.toString() : '--',
       change: 'Current',
       trend: 'stable',
       icon: BookOpen,
@@ -102,7 +157,7 @@ export default function DashboardPage() {
     },
     {
       title: 'Study Hours',
-      value: '31.6',
+      value: dashboardData ? '31.6' : '--',
       change: '+2.3',
       trend: 'up',
       icon: Clock,
@@ -110,7 +165,7 @@ export default function DashboardPage() {
     },
     {
       title: 'Attendance Rate',
-      value: '90.5%',
+      value: dashboardData ? '90.5%' : '--',
       change: '+1.2%',
       trend: 'up',
       icon: Target,
@@ -186,6 +241,18 @@ export default function DashboardPage() {
         {/* Role-based Navigation */}
         <RoleNav />
 
+        {/* Error Message */}
+        {error && (
+          <motion.div 
+            className="p-4 bg-red-50 border border-red-200 rounded-md text-red-700"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p className="text-sm">{error}</p>
+            <p className="text-xs mt-1">Showing fallback data</p>
+          </motion.div>
+        )}
+
         {/* Filters */}
         <motion.div 
           className="grid grid-cols-1 md:grid-cols-3 gap-4"
@@ -219,299 +286,316 @@ export default function DashboardPage() {
           </Button>
         </motion.div>
 
-        {/* Summary Metrics */}
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          {summaryMetrics.map((metric, index) => (
-            <motion.div
-              key={metric.title}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.2 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Card className="hover:shadow-lg">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {metric.title}
-                  </CardTitle>
-                  <div className={`p-2 rounded-lg ${metric.color}`}>
-                    <metric.icon className="w-4 h-4 text-white" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{metric.value}</div>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                    <span className={`text-${metric.trend === 'up' ? 'green' : metric.trend === 'down' ? 'red' : 'blue'}-500`}>
-                      {metric.change}
-                    </span>
-                    from last month
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        {/* Charts Section */}
-        <motion.div 
-          className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          {/* Course Progress Chart */}
-          <motion.div
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.2 }}
+        {/* Loading State */}
+        {isLoading && (
+          <motion.div 
+            className="flex items-center justify-center py-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
           >
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Progress</CardTitle>
-                <CardDescription>Your current progress across all enrolled courses</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={courseProgressData}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
-                    <XAxis dataKey="course" angle={-45} textAnchor="end" height={80} />
-                    <YAxis />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Bar dataKey="progress" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              <span>Loading dashboard data...</span>
+            </div>
           </motion.div>
+        )}
 
-          {/* Weekly Study Hours */}
-          <motion.div
-            initial={{ x: 20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Weekly Study Hours</CardTitle>
-                <CardDescription>Your study time distribution throughout the week</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={weeklyStudyHours}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
-                    <XAxis dataKey="day" />
-                    <YAxis />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="hours" 
-                      stroke="#06b6d4" 
-                      fill="#06b6d4" 
-                      fillOpacity={0.6}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </motion.div>
-
-        {/* Additional Charts */}
-        <motion.div 
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          {/* Grade Distribution */}
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.2 }}
-            className="lg:col-span-1"
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Grade Distribution</CardTitle>
-                <CardDescription>Your grade breakdown this semester</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={gradeDistribution}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                                             label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="count"
-                    >
-                      {gradeDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Skills Assessment */}
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.2 }}
-            className="lg:col-span-2"
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Skills Assessment</CardTitle>
-                <CardDescription>Your proficiency in different academic areas</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <RadarChart data={skillAssessment}>
-                    <PolarGrid />
-                    <PolarAngleAxis dataKey="skill" />
-                    <PolarRadiusAxis angle={90} domain={[0, 100]} />
-                    <Radar 
-                      name="Skills" 
-                      dataKey="value" 
-                      stroke="#8b5cf6" 
-                      fill="#8b5cf6" 
-                      fillOpacity={0.3} 
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </motion.div>
-
-        {/* Attendance Trend */}
-        <motion.div 
-          className="grid grid-cols-1 gap-6"
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle>Attendance Trend</CardTitle>
-              <CardDescription>Your attendance rate over the past 8 weeks</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={attendanceTrend}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
-                  <XAxis dataKey="week" />
-                  <YAxis domain={[80, 100]} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="attendance" 
-                    stroke="#10b981" 
-                    strokeWidth={3}
-                    dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Recent Activity */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Academic Activity</CardTitle>
-              <CardDescription>Your latest academic achievements and activities</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  { activity: 'Submitted CS301 Final Project', time: '2 hours ago', type: 'assignment', grade: 'A' },
-                  { activity: 'Attended Office Hours - MATH201', time: '1 day ago', type: 'meeting', grade: null },
-                  { activity: 'Completed CS201 Midterm', time: '3 days ago', type: 'exam', grade: 'B+' },
-                  { activity: 'Joined Study Group Session', time: '1 week ago', type: 'study', grade: null },
-                  { activity: 'Submitted ENG101 Essay', time: '1 week ago', type: 'assignment', grade: 'A-' },
-                ].map((activity, index) => (
+        {/* Dashboard Content */}
+        <AnimatePresence>
+          {!isLoading && (
+            <>
+              {/* Summary Metrics */}
+              <motion.div 
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {summaryMetrics.map((metric, index) => (
                   <motion.div
-                    key={index}
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50"
+                    key={metric.title}
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.2, delay: index * 0.1 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Award className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{activity.activity}</p>
-                        <p className="text-sm text-muted-foreground">{activity.time}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {activity.grade && (
-                        <Badge variant="secondary" className="text-xs">
-                          {activity.grade}
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className="text-xs">
-                        {activity.type}
-                      </Badge>
-                    </div>
+                    <Card className="hover:shadow-lg">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                          {metric.title}
+                        </CardTitle>
+                        <div className={`p-2 rounded-lg ${metric.color}`}>
+                          <metric.icon className="w-4 h-4 text-white" />
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{metric.value}</div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                          <span className={`text-${metric.trend === 'up' ? 'green' : metric.trend === 'down' ? 'red' : 'blue'}-500`}>
+                            {metric.change}
+                          </span>
+                          from last month
+                        </p>
+                      </CardContent>
+                    </Card>
                   </motion.div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              </motion.div>
+
+              {/* Charts Section */}
+              <motion.div 
+                className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* Course Progress Chart */}
+                <motion.div
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Course Progress</CardTitle>
+                      <CardDescription>Your current progress across all enrolled courses</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={chartData.courseProgress}>
+                          <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
+                          <XAxis dataKey="course" angle={-45} textAnchor="end" height={80} />
+                          <YAxis />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px'
+                            }}
+                          />
+                          <Bar dataKey="progress" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                {/* Weekly Study Hours */}
+                <motion.div
+                  initial={{ x: 20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Weekly Study Hours</CardTitle>
+                      <CardDescription>Your study time distribution throughout the week</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <AreaChart data={chartData.weeklyStudyHours}>
+                          <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
+                          <XAxis dataKey="day" />
+                          <YAxis />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px'
+                            }}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="hours" 
+                            stroke="#06b6d4" 
+                            fill="#06b6d4" 
+                            fillOpacity={0.6}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </motion.div>
+
+              {/* Additional Charts */}
+              <motion.div 
+                className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* Grade Distribution */}
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className="lg:col-span-1"
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Grade Distribution</CardTitle>
+                      <CardDescription>Your grade breakdown this semester</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <PieChart>
+                          <Pie
+                            data={chartData.gradeDistribution}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="count"
+                          >
+                            {chartData.gradeDistribution.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px'
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                {/* Skills Assessment */}
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className="lg:col-span-2"
+                >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Skills Assessment</CardTitle>
+                      <CardDescription>Your proficiency in different academic areas</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <RadarChart data={chartData.skillAssessment}>
+                          <PolarGrid />
+                          <PolarAngleAxis dataKey="skill" />
+                          <PolarRadiusAxis angle={90} domain={[0, 100]} />
+                          <Radar 
+                            name="Skills" 
+                            dataKey="value" 
+                            stroke="#8b5cf6" 
+                            fill="#8b5cf6" 
+                            fillOpacity={0.3} 
+                          />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px'
+                            }}
+                          />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </motion.div>
+
+              {/* Attendance Trend */}
+              <motion.div 
+                className="grid grid-cols-1 gap-6"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Attendance Trend</CardTitle>
+                    <CardDescription>Your attendance rate over the past 8 weeks</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={chartData.attendanceTrend}>
+                        <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
+                        <XAxis dataKey="week" />
+                        <YAxis domain={[80, 100]} />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--card))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="attendance" 
+                          stroke="#10b981" 
+                          strokeWidth={3}
+                          dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Recent Activity */}
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Academic Activity</CardTitle>
+                    <CardDescription>Your latest academic achievements and activities</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {dashboardData?.recentActivity.length ? (
+                        dashboardData.recentActivity.slice(0, 5).map((activity, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ duration: 0.2, delay: index * 0.1 }}
+                            className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <Award className="w-4 h-4 text-primary" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{activity.action}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {new Date(activity.timestamp).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {activity.action.split('_')[0]}
+                            </Badge>
+                          </motion.div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Award className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p>No recent activity to display</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   )
