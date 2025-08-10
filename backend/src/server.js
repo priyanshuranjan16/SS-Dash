@@ -20,8 +20,7 @@ const NODE_ENV = process.env.NODE_ENV || 'development'
 // Create Fastify instance
 const fastify = Fastify({
   logger: {
-    level: NODE_ENV === 'development' ? 'info' : 'warn',
-    prettyPrint: NODE_ENV === 'development'
+    level: NODE_ENV === 'development' ? 'info' : 'warn'
   },
   trustProxy: true
 })
