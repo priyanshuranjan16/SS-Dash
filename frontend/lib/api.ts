@@ -1,11 +1,11 @@
 import { mockApi } from './dummy-data'
 
-const API_BASE_URL = 'http://localhost:4000/api'
+const API_BASE_URL = 'https://ss-dash-be.onrender.com/api'
 
 // Debug function to test backend connectivity
 export const testBackendConnection = async () => {
   try {
-    const response = await fetch('http://localhost:4000/health')
+    const response = await fetch('https://ss-dash-be.onrender.com')
     if (response.ok) {
       const data = await response.json()
       console.log('✅ Backend is running:', data)
@@ -400,7 +400,7 @@ export const api = {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
+            // 'Content-Type': 'application/json',
           },
         })
       } catch (error) {
@@ -408,16 +408,16 @@ export const api = {
       }
     }
 
-    // Remove token from cookie and localStorage
-    this.removeToken()
+    // // Remove token from cookie and localStorage
+    // this.removeToken()
     
-    // Clear all potential storage locations
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    sessionStorage.clear()
+    // // Clear all potential storage locations
+    // localStorage.removeItem('token')
+    // localStorage.removeItem('user')
+    // sessionStorage.clear()
     
-    console.log('✅ All tokens and user data cleared from API')
-    return { success: true }
+    // console.log('✅ All tokens and user data cleared from API')
+    // return { success: true }
   },
 
   async getDashboard(): Promise<DashboardResponse> {

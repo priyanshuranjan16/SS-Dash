@@ -35,7 +35,7 @@ npm run dev
 ```
 
 **Verify:**
-- Check `http://localhost:4000/health` in browser
+- Check `https://ss-dash-be.onrender.com/health` in browser
 - Should return: `{"status":"ok","timestamp":"...","uptime":...,"environment":"development"}`
 
 ### 2. Database Connection Issues
@@ -87,9 +87,9 @@ node create-test-users.js
 - "Failed to fetch" errors
 
 **Solution:**
-- Ensure backend CORS is configured for `http://localhost:3000`
-- Check backend server is running on port 4000
-- Verify frontend is running on port 3000
+- Ensure backend CORS is configured for `https://ss-dash-fe.vercel.app`
+- Check backend server is running on https://ss-dash-be.onrender.com
+- Verify frontend is running on https://ss-dash-fe.vercel.app
 
 ## 🧪 Test Credentials
 
@@ -105,18 +105,18 @@ Use these credentials for testing:
 
 ### 1. Backend Health Check
 ```bash
-curl http://localhost:4000/health
+curl https://ss-dash-be.onrender.com/health
 ```
 
 ### 2. Test Login API
 ```bash
-curl -X POST http://localhost:4000/api/auth/login \
+curl -X POST https://ss-dash-be.onrender.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@d-dash.com","password":"admin123"}'
 ```
 
 ### 3. Frontend Test Page
-Open `frontend/test-login.html` in browser for interactive testing.
+Open `https://ss-dash-fe.vercel.app/test-login.html` in browser for interactive testing.
 
 ## 🔄 Fallback Mechanism
 
@@ -137,10 +137,10 @@ The application includes a **dummy authentication fallback** when the backend is
 ### Step 1: Check Backend Status
 ```bash
 # Check if backend is running
-curl http://localhost:4000/health
+curl https://ss-dash-be.onrender.com/health
 
 # Check if MongoDB is accessible
-curl http://localhost:4000/api/auth/login \
+curl https://ss-dash-be.onrender.com/api/auth/login \
   -X POST \
   -H "Content-Type: application/json" \
   -d '{"email":"test@test.com","password":"test"}'
@@ -206,7 +206,7 @@ PORT=4000
 NODE_ENV=development
 MONGODB_URI=mongodb://localhost:27017/d-dash
 JWT_SECRET=your-super-secret-jwt-key
-CORS_ORIGIN=http://localhost:3000
+CORS_ORIGIN=https://ss-dash-fe.vercel.app
 ```
 
 ## 📞 Getting Help
@@ -221,10 +221,10 @@ If issues persist:
 
 ## 🎯 Quick Fix Checklist
 
-- [ ] Backend server running on port 4000
+- [ ] Backend server running on https://ss-dash-be.onrender.com
 - [ ] MongoDB running and accessible
 - [ ] Test users created with `node create-test-users.js`
-- [ ] Frontend running on port 3000
+- [ ] Frontend running on https://ss-dash-fe.vercel.app
 - [ ] No CORS errors in browser console
 - [ ] Using correct test credentials
 - [ ] Browser cache cleared
@@ -237,15 +237,25 @@ If all else fails, reset the entire setup:
 ```bash
 # Backend
 cd backend
+rm -rf node_modules package-lock.json
 npm install
-node create-test-users.js
 npm start
 
-# Frontend (in new terminal)
+# Frontend
 cd frontend
+rm -rf node_modules package-lock.json .next
 npm install
 npm run dev
-
-# Clear browser data
-# Open test page: http://localhost:3000/test-login.html
 ```
+
+## 🌐 Production URLs
+
+- **Frontend**: https://ss-dash-fe.vercel.app
+- **Backend**: https://ss-dash-be.onrender.com
+- **Health Check**: https://ss-dash-be.onrender.com/health
+- **API Base**: https://ss-dash-be.onrender.com/api
+- **GraphQL**: https://ss-dash-be.onrender.com/graphql
+
+## 🔐 Test Login Page
+
+For quick testing, visit: https://ss-dash-fe.vercel.app/test-login.html

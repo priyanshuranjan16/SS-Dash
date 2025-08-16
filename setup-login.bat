@@ -6,7 +6,7 @@ echo.
 
 :: Check if backend is running
 echo [1/5] Checking if backend is running...
-curl -s http://localhost:4000/health >nul 2>&1
+curl -s https://ss-dash-be.onrender.com/health >nul 2>&1
 if %errorlevel% equ 0 (
     echo ✅ Backend is already running
 ) else (
@@ -20,7 +20,7 @@ if %errorlevel% equ 0 (
     
     :: Wait for backend to be ready
     :wait_loop
-    curl -s http://localhost:4000/health >nul 2>&1
+    curl -s https://ss-dash-be.onrender.com/health >nul 2>&1
     if %errorlevel% neq 0 (
         echo Still waiting for backend...
         timeout /t 2 /nobreak >nul
@@ -44,7 +44,7 @@ cd ..
 :: Test backend connection
 echo.
 echo [3/5] Testing backend connection...
-curl -s http://localhost:4000/health
+curl -s https://ss-dash-be.onrender.com/health
 if %errorlevel% neq 0 (
     echo ❌ Backend connection test failed
     pause
@@ -55,7 +55,7 @@ echo ✅ Backend connection successful
 :: Test login API
 echo.
 echo [4/5] Testing login API...
-curl -s -X POST http://localhost:4000/api/auth/login -H "Content-Type: application/json" -d "{\"email\":\"admin@d-dash.com\",\"password\":\"admin123\"}" | findstr "success"
+curl -s -X POST https://ss-dash-be.onrender.com/api/auth/login -H "Content-Type: application/json" -d "{\"email\":\"admin@d-dash.com\",\"password\":\"admin123\"}" | findstr "success"
 if %errorlevel% neq 0 (
     echo ⚠️  Login API test failed (this might be normal if users don't exist yet)
 ) else (
@@ -73,14 +73,14 @@ echo    Admin: admin@d-dash.com / admin123
 echo    Teacher: teacher@d-dash.com / teacher123
 echo    Student: student@d-dash.com / student123
 echo.
-echo 🌐 Test Page: http://localhost:3000/test-login.html
-echo 🔧 Backend Health: http://localhost:4000/health
+echo 🌐 Test Page: https://ss-dash-fe.vercel.app/test-login.html
+echo 🔧 Backend Health: https://ss-dash-be.onrender.com/health
 echo.
 echo Press any key to open the test page...
 pause >nul
 
 :: Open test page in default browser
-start http://localhost:3000/test-login.html
+start https://ss-dash-fe.vercel.app/test-login.html
 
 echo.
 echo ========================================

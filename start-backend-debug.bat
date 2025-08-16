@@ -10,12 +10,12 @@ echo Installing dependencies if needed...
 call npm install
 
 echo.
-echo Starting backend server on localhost:4000...
+echo Starting backend server on https://ss-dash-be.onrender.com...
 echo.
 echo The server will be available at:
-echo - Health check: http://localhost:4000/health
-echo - API base: http://localhost:4000/api
-echo - Login endpoint: http://localhost:4000/api/auth/login
+echo - Health check: https://ss-dash-be.onrender.com/health
+echo - API base: https://ss-dash-be.onrender.com/api
+echo - Login endpoint: https://ss-dash-be.onrender.com/api/auth/login
 echo.
 
 call npm start

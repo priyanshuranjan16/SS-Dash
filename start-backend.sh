@@ -23,8 +23,8 @@ fi
 
 echo ""
 echo "Starting backend server..."
-echo "Backend will be available at: http://localhost:3001"
-echo "Health check: http://localhost:3001/health"
+echo "Backend will be available at: https://ss-dash-be.onrender.com"
+echo "Health check: https://ss-dash-be.onrender.com/health"
 echo ""
 echo "Press Ctrl+C to stop the server"
 echo ""

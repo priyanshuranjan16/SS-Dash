@@ -80,7 +80,7 @@ npm install
 npm start
 ```
 
-The backend will be running on `http://localhost:4000`
+The backend will be running on `https://ss-dash-be.onrender.com`
 
 ### 3. Frontend Setup
 
@@ -95,13 +95,13 @@ npm install
 npm run dev
 ```
 
-The frontend will be running on `http://localhost:3000`
+The frontend will be running on `https://ss-dash-fe.vercel.app`
 
 ### 4. Access the Application
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:4000
-- **GraphQL Playground**: http://localhost:4000/graphql
+- **Frontend**: https://ss-dash-fe.vercel.app
+- **Backend API**: https://ss-dash-be.onrender.com
+- **GraphQL Playground**: https://ss-dash-be.onrender.com/graphql
 
 
 
@@ -137,7 +137,7 @@ JWT_SECRET=your-super-secret-jwt-key
 JWT_EXPIRES_IN=7d
 
 # CORS Configuration
-CORS_ORIGIN=http://localhost:3000
+CORS_ORIGIN=https://ss-dash-fe.vercel.app
 ```
 
 ### Frontend Configuration

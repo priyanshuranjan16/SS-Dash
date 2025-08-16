@@ -1,6 +1,6 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
-import jwt from 'fastify-jwt'
+import jwt from '@fastify/jwt'
 import dotenv from 'dotenv'
 
 import { connectDatabase } from './config/database.js'
@@ -27,8 +27,16 @@ const start = async () => {
 
     // Register plugins
     await fastify.register(cors, {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-      credentials: true
+    origin: (origin, cb) => {
+    const allowedOrigins = process.env.CORS_ORIGIN.split(',')
+
+    if (!origin || allowedOrigins.includes(origin)) {
+      cb(null, true)
+    } else {
+      cb(new Error("Not allowed by CORS"), false)
+    }
+  },
+  credentials: true
     })
 
     await fastify.register(jwt, {

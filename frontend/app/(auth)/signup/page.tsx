@@ -22,7 +22,7 @@ export default function SignupPage() {
     setMounted(true)
   }, [])
 
-  async function onSubmit(values: { name: string; email: string; password: string; role: "student" | "teacher" | "admin" }) {
+  async function onSubmit(values: { name?: string; email: string; password: string; role: "student" | "teacher" | "admin" }): Promise<void> {
     console.log('Signup onSubmit called with values:', values)
     
     try {
@@ -33,17 +33,23 @@ export default function SignupPage() {
       
       // Test backend connection first
       try {
-        const healthResponse = await fetch('http://localhost:4000/health')
+        const healthResponse = await fetch('https://ss-dash-be.onrender.com')
         console.log('Backend health check status:', healthResponse.status)
         if (!healthResponse.ok) {
           throw new Error('Backend server is not responding properly')
         }
       } catch (healthError) {
         console.error('Backend health check failed:', healthError)
-        setError('Backend server is not accessible. Please ensure the server is running on localhost:4000.')
+        setError('Backend server is not accessible. Please ensure the server is running on https://ss-dash-be.onrender.com')
         return
       }
       
+      // Validate that name is provided for signup
+      if (!values.name || values.name.trim().length < 2) {
+        setError('Name is required and must be at least 2 characters long.')
+        return
+      }
+
       // Call your backend API using the api utility
       console.log('Calling api.register...')
       const data = await api.register({
